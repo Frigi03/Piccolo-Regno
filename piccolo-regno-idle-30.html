@@ -1,0 +1,2554 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Piccolo Regno — Idle</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B1B2F">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Piccolo Regno">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#1B1B2F;
+    --wood:#3E2723;
+    --wood-light:#5D4037;
+    --gold:#D4AF37;
+    --copper:#B87333;
+    --parchment:#F5E6C8;
+    --green:#6B8F71;
+    --danger:#B0413E;
+    --panel-border:#0D0D16;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{
+    margin:0; padding:0; height:100%; overflow:hidden;
+    background:var(--night);
+    font-family:'VT323', monospace;
+    color:var(--parchment);
+    image-rendering: pixelated;
+  }
+  .pixel-font{ font-family:'Press Start 2P', monospace; }
+  #app{
+    display:flex; flex-direction:column; height:100vh; height:100dvh;
+    max-width:520px; margin:0 auto;
+    background:linear-gradient(180deg, #22223B 0%, #1B1B2F 60%);
+    position:relative;
+    border-left:3px solid var(--panel-border);
+    border-right:3px solid var(--panel-border);
+  }
+
+  /* ---------- TOP BAR ---------- */
+  #resourceBar{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px;
+    background:var(--wood);
+    border-bottom:3px solid var(--panel-border);
+    flex-shrink:0;
+    overflow-x:auto;
+  }
+  .resource-chip{
+    display:flex; align-items:center; gap:6px;
+    background:var(--wood-light);
+    border:2px solid var(--panel-border);
+    border-radius:6px;
+    padding:4px 10px;
+    white-space:nowrap;
+    font-size:20px;
+  }
+  .resource-chip .amt{ color:var(--gold); font-weight:bold; }
+  .resource-chip .rate{ color:var(--green); font-size:15px; }
+
+  /* ---------- MAIN VIEWS ---------- */
+  #views{ flex:1; overflow-y:auto; position:relative; }
+  .view{ display:none; padding:14px; padding-bottom:90px; animation:fadeIn .15s ease; }
+  .view.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0} to{opacity:1} }
+
+  /* ---------- HOME / TAP AREA ---------- */
+  #homeStage{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; padding-top:10px;
+  }
+  #tapButton{
+    width:170px; height:170px;
+    background:radial-gradient(circle at 35% 30%, #FFE8A3, var(--gold) 55%, var(--copper) 100%);
+    border:5px solid var(--panel-border);
+    border-radius:16px;
+    box-shadow: 0 8px 0 var(--panel-border), 0 8px 18px rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center;
+    font-size:56px;
+    cursor:pointer;
+    transition: transform .04s ease;
+    touch-action:manipulation;
+    -webkit-touch-callout:none;
+  }
+  #tapButton:active{ transform: translateY(6px); box-shadow:0 2px 0 var(--panel-border); }
+  #tapLabel{ font-size:22px; color:var(--parchment); text-align:center; }
+  #tapValueLabel{ color:var(--gold); font-size:26px; }
+
+  .floatText{
+    position:absolute; pointer-events:none;
+    font-family:'Press Start 2P', monospace;
+    font-size:14px; color:var(--gold);
+    animation: floatUp .9s ease-out forwards;
+    text-shadow: 2px 2px 0 #000;
+  }
+  @keyframes floatUp{
+    0%{ opacity:1; transform:translateY(0); }
+    100%{ opacity:0; transform:translateY(-70px); }
+  }
+
+  #summaryBox{
+    width:100%;
+    background:var(--wood);
+    border:3px solid var(--panel-border);
+    border-radius:8px;
+    padding:12px;
+    font-size:20px;
+    margin-top:10px;
+  }
+  #summaryBox .row{ display:flex; justify-content:space-between; padding:2px 0; }
+  #summaryBox .row span:last-child{ color:var(--green); }
+
+  .ads-box{
+    width:100%;
+    background:var(--wood);
+    border:3px solid var(--copper);
+    border-radius:8px;
+    padding:10px;
+    margin-top:10px;
+  }
+  .ads-btn{
+    flex:1; background:var(--copper); color:#fff; border:2px solid var(--panel-border);
+    border-radius:6px; padding:9px 4px; font-family:'VT323', monospace; font-size:15px; cursor:pointer;
+  }
+  .ads-btn:disabled{ background:#5a5a5a; color:#999; cursor:default; }
+
+  /* ---------- SECTION TITLE ---------- */
+  .section-title{
+    font-family:'Press Start 2P', monospace;
+    font-size:14px;
+    color:var(--gold);
+    margin: 4px 0 14px 0;
+  }
+
+  /* ---------- BUILDING CARD ---------- */
+  .building-card{
+    display:flex; align-items:center; gap:12px;
+    background:var(--wood);
+    border:3px solid var(--panel-border);
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:10px;
+  }
+  .building-card.locked{ opacity:.45; }
+  .b-icon{
+    width:52px; height:52px; flex-shrink:0;
+    background:var(--wood-light);
+    border:2px solid var(--panel-border);
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+  }
+  .b-info{ flex:1; min-width:0; }
+  .b-name{ font-size:20px; color:var(--parchment); }
+  .b-desc{ font-size:15px; color:#C9B896; }
+  .b-stats{ font-size:15px; color:var(--green); }
+  .b-buy{
+    background:var(--gold);
+    color:#221; border:2px solid var(--panel-border);
+    border-radius:6px; padding:8px 10px;
+    font-family:'VT323', monospace; font-size:18px;
+    text-align:center; min-width:76px;
+    cursor:pointer;
+  }
+  .b-buy.cant{ background:#5a5a5a; color:#999; }
+  .b-buy .cost{ display:block; font-size:15px; }
+
+  /* ---------- UPGRADE CARD ---------- */
+  .upgrade-card{
+    background:var(--wood);
+    border:3px solid var(--panel-border);
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:10px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .upgrade-card.owned{ border-color:var(--green); opacity:.7; }
+  .upgrade-card.locked{ opacity:.45; }
+  .u-icon{ font-size:26px; width:42px; text-align:center; flex-shrink:0; }
+  .u-info{ flex:1; }
+  .u-name{ font-size:19px; }
+  .u-desc{ font-size:14px; color:#C9B896; }
+  .u-buy{ background:var(--copper); color:#fff; border:2px solid var(--panel-border);
+    border-radius:6px; padding:8px 10px; font-size:16px; min-width:70px; text-align:center; cursor:pointer; }
+  .u-buy.cant{ background:#5a5a5a; color:#999; }
+
+  .soon-box{
+    text-align:center; padding:40px 20px; color:#C9B896; font-size:18px;
+  }
+
+  /* ---------- PRESTIGE ---------- */
+  .prestige-summary{
+    background:var(--wood); border:3px solid var(--gold); border-radius:10px;
+    padding:14px; margin-bottom:16px; text-align:center;
+  }
+  .prestige-summary .crowns{ font-size:30px; color:var(--gold); }
+  .prestige-summary .gain{ font-size:18px; color:var(--green); margin:6px 0; }
+  .prestige-btn{
+    margin-top:10px; width:100%; background:var(--gold); color:#221;
+    border:2px solid var(--panel-border); border-radius:8px;
+    padding:12px; font-family:'VT323', monospace; font-size:22px; cursor:pointer;
+  }
+  .prestige-btn.cant{ background:#5a5a5a; color:#999; }
+  .prestige-shop-card{
+    display:flex; align-items:center; gap:12px;
+    background:var(--wood); border:3px solid var(--panel-border); border-radius:10px;
+    padding:10px; margin-bottom:10px;
+  }
+  .prestige-shop-card.owned{ border-color:var(--gold); opacity:.7; }
+
+  /* ---------- QUESTS ---------- */
+  .quest-card{
+    display:flex; align-items:center; gap:12px;
+    background:var(--wood); border:3px solid var(--panel-border); border-radius:10px;
+    padding:10px; margin-bottom:10px;
+  }
+  .quest-card.done{ border-color:var(--green); }
+  .quest-card.claimed{ opacity:.45; }
+  .quest-info{ flex:1; }
+  .quest-name{ font-size:19px; }
+  .quest-desc{ font-size:14px; color:#C9B896; }
+  .quest-progress{ font-size:14px; color:var(--green); }
+  .quest-claim{
+    background:var(--green); color:#111; border:2px solid var(--panel-border);
+    border-radius:6px; padding:8px 10px; font-size:15px; min-width:74px; text-align:center; cursor:pointer;
+  }
+  .quest-claim.cant{ background:#5a5a5a; color:#999; }
+
+  /* ---------- ACHIEVEMENTS ---------- */
+  .achievements-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap:10px;
+  }
+  .ach-cell{
+    aspect-ratio:1; background:var(--wood); border:3px solid var(--panel-border);
+    border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:26px; padding:4px; text-align:center;
+  }
+  .ach-cell.unlocked{ border-color:var(--gold); background:#4a3418; }
+  .ach-cell .ach-label{ font-size:10px; color:#C9B896; margin-top:2px; line-height:1.1; }
+  .ach-cell.unlocked .ach-label{ color:var(--gold); }
+  .ach-cell.locked-hidden{ opacity:.35; }
+
+  /* ---------- TOAST ---------- */
+  #toastWrap{
+    position:absolute; top:60px; left:50%; transform:translateX(-50%);
+    z-index:60; display:flex; flex-direction:column; gap:8px; align-items:center;
+    pointer-events:none; width:90%;
+  }
+  .toast{
+    background:var(--wood); border:3px solid var(--gold); border-radius:8px;
+    padding:10px 14px; font-size:16px; text-align:center; max-width:320px;
+    box-shadow:0 4px 10px rgba(0,0,0,.4);
+    animation: toastIn .3s ease, toastOut .3s ease 2.7s forwards;
+  }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(-10px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes toastOut{ to{opacity:0; transform:translateY(-10px);} }
+
+  /* ---------- LOW GRAPHICS MODE ---------- */
+  #app.low-fx, #app.low-fx *{
+    transition:none !important;
+    animation:none !important;
+    box-shadow:none !important;
+  }
+
+  /* ---------- BOTTOM NAV ---------- */
+  #bottomNav{
+    display:flex;
+    background:var(--wood);
+    border-top:3px solid var(--panel-border);
+    flex-shrink:0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:9px 2px; gap:2px;
+    font-size:12px; color:#C9B896;
+    cursor:pointer; border-top:3px solid transparent;
+  }
+  .nav-btn .icon{ font-size:26px; }
+  .nav-btn .nav-label{ display:none; }
+  .nav-btn.active{ color:var(--gold); border-top-color:var(--gold); background:rgba(212,175,55,.08); }
+
+  /* ---------- MODAL ---------- */
+  #modalOverlay{
+    position:absolute; inset:0; background:rgba(0,0,0,.7);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  #modalOverlay.show{ display:flex; }
+  .modal-box{
+    background:var(--wood); border:4px solid var(--gold); border-radius:12px;
+    padding:20px; max-width:340px; width:100%; text-align:center;
+  }
+  .modal-box h2{ font-family:'Press Start 2P', monospace; font-size:16px; color:var(--gold); margin:0 0 14px; }
+  .modal-box p{ font-size:20px; margin:6px 0; }
+  .modal-btn{
+    margin-top:16px; background:var(--gold); color:#221; border:none; border-radius:8px;
+    padding:12px 20px; font-family:'VT323', monospace; font-size:20px; cursor:pointer; width:100%;
+  }
+
+  /* scrollbars minimal */
+  ::-webkit-scrollbar{ width:6px; }
+  ::-webkit-scrollbar-thumb{ background:var(--copper); border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="resourceBar"></div>
+
+  <div id="views">
+
+    <!-- HOME -->
+    <div class="view active" id="view-home">
+      <div id="homeStage">
+        <div id="tapButton">🪙</div>
+        <div id="tapLabel"><span id="tapHintText">Tocca per raccogliere</span><br><span id="tapValueLabel">+1</span></div>
+        <div id="summaryBox">
+          <div class="row"><span id="labelRate">Produzione al secondo</span><span id="sumRate">+0/s</span></div>
+          <div class="row"><span id="labelWood">🪵 Legno al secondo</span><span id="sumWood">+0/s</span></div>
+          <div class="row"><span id="labelStone">🪨 Pietra al secondo</span><span id="sumStone">+0/s</span></div>
+          <div class="row"><span id="labelBuildings">Edifici posseduti</span><span id="sumBuildings">0</span></div>
+          <div class="row"><span id="labelOffline">Tempo offline max</span><span id="sumOffline">8h</span></div>
+        </div>
+        <div id="adsBox" class="ads-box"></div>
+      </div>
+    </div>
+
+    <!-- EDIFICI -->
+    <div class="view" id="view-buildings">
+      <div class="section-title" id="title-buildings">🏗️ EDIFICI</div>
+      <div id="buildingsList"></div>
+    </div>
+
+    <!-- UPGRADE -->
+    <div class="view" id="view-upgrades">
+      <div class="section-title" id="title-upgrades">⬆️ UPGRADE</div>
+      <div id="upgradesList"></div>
+      <div class="section-title" id="title-infinite" style="margin-top:22px">♾️ POTENZIAMENTI INFINITI</div>
+      <div id="infinite-hint" style="font-size:14px;color:#C9B896;margin-bottom:10px;">Questi si possono ricomprare all'infinito: il costo sale ogni volta, ma non finiscono mai.</div>
+      <div id="infiniteUpgradesList"></div>
+    </div>
+
+    <!-- PRESTIGIO -->
+    <div class="view" id="view-prestige">
+      <div class="section-title" id="title-prestige">⭐ PRESTIGIO — RINASCITA</div>
+      <div id="prestigeSummary" class="prestige-summary"></div>
+      <div class="section-title" id="title-prestige-shop" style="font-size:12px">🪙 NEGOZIO DELLA CORONA</div>
+      <div id="prestigeShopList"></div>
+      <div class="section-title" id="title-infinite-prestige" style="margin-top:22px">♾️ POTENZIAMENTI INFINITI DELLA CORONA</div>
+      <div id="infinite-prestige-hint" style="font-size:14px;color:#C9B896;margin-bottom:10px;">Costano Corone, non finiscono mai e restano per sempre, anche dopo una nuova Rinascita.</div>
+      <div id="infinitePrestigeList"></div>
+    </div>
+
+    <!-- MISSIONI -->
+    <div class="view" id="view-quests">
+      <div class="section-title" id="title-quests">🎯 MISSIONI</div>
+      <div id="questsList"></div>
+    </div>
+
+    <!-- ACHIEVEMENT -->
+    <div class="view" id="view-achievements">
+      <div class="section-title" id="title-achievements">🏆 ACHIEVEMENT</div>
+      <div id="achProgress" style="margin-bottom:12px;color:#C9B896;font-size:16px;"></div>
+      <div id="achievementsGrid" class="achievements-grid"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="section-title" id="title-settings">⚙️ IMPOSTAZIONI</div>
+      <div class="building-card" style="cursor:pointer" onclick="AudioManager.toggleMusic()">
+        <div class="b-icon">🎵</div>
+        <div class="b-info"><div class="b-name" id="lbl-music">Musica</div><div class="b-desc" id="musicStatus">Attiva</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="AudioManager.toggleSfx()">
+        <div class="b-icon">🔊</div>
+        <div class="b-info"><div class="b-name" id="lbl-sfx">Effetti sonori</div><div class="b-desc" id="sfxStatus">Attivi</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="AudioManager.toggleVibration()">
+        <div class="b-icon">📳</div>
+        <div class="b-info"><div class="b-name" id="lbl-vibration">Vibrazione</div><div class="b-desc" id="vibStatus">Attiva</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="LocalizationManager.toggle()">
+        <div class="b-icon">🌐</div>
+        <div class="b-info"><div class="b-name" id="lbl-language">Lingua</div><div class="b-desc" id="languageStatus">🇮🇹 Italiano</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="NotificationManager.toggle()">
+        <div class="b-icon">🔔</div>
+        <div class="b-info"><div class="b-name" id="lbl-notifications">Notifiche</div><div class="b-desc" id="notifStatus">Disattivate</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="GraphicsManager.toggleQuality()">
+        <div class="b-icon">🖼️</div>
+        <div class="b-info"><div class="b-name" id="lbl-quality">Qualità grafica</div><div class="b-desc" id="qualityStatus">Alta</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="GraphicsManager.toggleBattery()">
+        <div class="b-icon">🔋</div>
+        <div class="b-info"><div class="b-name" id="lbl-battery">Risparmio batteria</div><div class="b-desc" id="batteryStatus">Disattivato</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="SaveManager.exportSave()">
+        <div class="b-icon">📤</div>
+        <div class="b-info"><div class="b-name" id="lbl-export">Esporta salvataggio</div><div class="b-desc" id="lbl-export-desc">Copia il codice di backup</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="SaveManager.promptImport()">
+        <div class="b-icon">📥</div>
+        <div class="b-info"><div class="b-name" id="lbl-import">Importa salvataggio</div><div class="b-desc" id="lbl-import-desc">Incolla un codice di backup</div></div>
+      </div>
+      <div class="building-card" style="cursor:pointer" onclick="SaveManager.resetGame()">
+        <div class="b-icon">🗑️</div>
+        <div class="b-info"><div class="b-name" id="lbl-reset">Reset partita</div><div class="b-desc" id="lbl-reset-desc">Cancella tutti i progressi</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="bottomNav">
+    <div class="nav-btn active" data-view="home"><div class="icon">🏠</div><span class="nav-label" id="navlabel-home">Home</span></div>
+    <div class="nav-btn" data-view="buildings"><div class="icon">🏗️</div><span class="nav-label" id="navlabel-buildings">Edifici</span></div>
+    <div class="nav-btn" data-view="upgrades"><div class="icon">⬆️</div><span class="nav-label" id="navlabel-upgrades">Upgrade</span></div>
+    <div class="nav-btn" data-view="prestige"><div class="icon">⭐</div><span class="nav-label" id="navlabel-prestige">Prestigio</span></div>
+    <div class="nav-btn" data-view="quests"><div class="icon">🎯</div><span class="nav-label" id="navlabel-quests">Missioni</span></div>
+    <div class="nav-btn" data-view="achievements"><div class="icon">🏆</div><span class="nav-label" id="navlabel-achievements">Trofei</span></div>
+    <div class="nav-btn" data-view="settings"><div class="icon">⚙️</div><span class="nav-label" id="navlabel-settings">Opzioni</span></div>
+  </div>
+
+  <div id="modalOverlay">
+    <div class="modal-box" id="modalBox"></div>
+  </div>
+
+  <div id="toastWrap"></div>
+
+</div>
+
+<script>
+/* =========================================================================
+   ECONOMY MANAGER — number formatting & cost math
+   ========================================================================= */
+const EconomyManager = {
+  format(n){
+    if(n === null || n === undefined || isNaN(n)) return "0";
+    const isNeg = n < 0;
+    n = Math.abs(Math.floor(n * 100) / 100);
+    let out;
+    if(n < 1000){
+      out = (Math.floor(n*100)/100).toString().replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+    } else {
+      const units = ["","K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc"];
+      let unitIndex = 0;
+      let val = n;
+      while(val >= 1000 && unitIndex < units.length - 1){
+        val /= 1000;
+        unitIndex++;
+      }
+      let decimals = val < 10 ? 2 : val < 100 ? 1 : 0;
+      // l'arrotondamento può spingere il valore a 1000 (es. 999.999 -> "1000"):
+      // in quel caso passa all'unità successiva invece di mostrare "1000K"
+      let rounded = parseFloat(val.toFixed(decimals));
+      if(rounded >= 1000 && unitIndex < units.length - 1){
+        val = rounded / 1000;
+        unitIndex++;
+        decimals = val < 10 ? 2 : val < 100 ? 1 : 0;
+        rounded = parseFloat(val.toFixed(decimals));
+      }
+      out = rounded.toFixed(decimals) + units[unitIndex];
+    }
+    return (isNeg ? '-' : '') + out;
+  },
+  buildingCost(building){
+    return Math.ceil(building.baseCost * Math.pow(building.growthRate, building.level));
+  },
+  buildingProduction(building){
+    // each building has slight per-level scaling plus milestone multipliers at 10/25/50/100
+    let mult = 1;
+    if(building.level >= 100) mult = 8;
+    else if(building.level >= 50) mult = 4;
+    else if(building.level >= 25) mult = 2.5;
+    else if(building.level >= 10) mult = 1.5;
+    return building.baseProduction * building.level * mult;
+  }
+};
+
+/* =========================================================================
+   GAME STATE
+   ========================================================================= */
+const GameManager = {
+  state: {
+    gold: 0,
+    wood: 0,
+    stone: 0,
+    totalGoldEarned: 0,
+    tapBase: 1,
+    lastSave: Date.now(),
+    maxOfflineHours: 8,
+    firstRun: true,
+    migrationNoticeShown: false,
+    stats: {
+      totalTaps: 0,
+      lifetimeGoldEarned: 0,
+      lifetimeWoodEarned: 0,
+      lifetimeStoneEarned: 0,
+      buildingsBoughtTotal: 0,
+      totalPrestiges: 0,
+      firstPlayed: Date.now(),
+      rareEventsTriggered: 0
+    },
+    activeBoost: { multiplier: 1, endsAt: 0, label: '' },
+    settings: { musicOn: true, sfxOn: true, vibrationOn: true, language: 'it', notificationsOn: false, quality: 'high', batterySaver: false },
+    ads: { adsWatchedToday: 0, lastAdDate: '', cooldownUntil: 0 },
+    prestige: {
+      crowns: 0
+    },
+    achievements: {
+      unlockedIds: []
+    },
+    quests: {
+      claimedIds: []
+    },
+    prestigeShop: [
+      { id:'pOffline6',  name:'Occhio del Re',     icon:'👁️', desc:'+6h di tempo offline massimo', cost:2,  type:'offline_cap', value:6, owned:false },
+      { id:'pTap50',     name:'Tesoro reale',      icon:'💎', desc:'+50% guadagno del tocco',      cost:3,  type:'tap_pct', value:0.5, owned:false },
+      { id:'pGlobal25',  name:'Editto eterno',     icon:'⚜️', desc:'+25% produzione totale',       cost:5,  type:'global_pct', value:0.25, owned:false },
+      { id:'pGlobal25b', name:'Benedizione reale', icon:'🕊️', desc:'+25% produzione totale',       cost:12, type:'global_pct', value:0.25, owned:false },
+      { id:'pStartGold', name:'Tesoreria di base', icon:'🪙', desc:'Inizia ogni rinascita con 500 oro', cost:4, type:'starting_gold', value:500, owned:false }
+    ],
+    infinitePrestigeUpgrades: [
+      { id:'pinf_global',  name:'Saggezza Reale',  icon:'👑', desc:'+1% produzione totale per livello',      level:0, baseCost:1, growthRate:1.15, effect:'global_pct',  increment:0.01 },
+      { id:'pinf_tap',     name:'Tocco Regale',    icon:'💫', desc:'+2% guadagno tocco per livello',         level:0, baseCost:2, growthRate:1.18, effect:'tap_pct',     increment:0.02 },
+      { id:'pinf_offline', name:'Vigilanza Eterna',icon:'🌙', desc:'+0.5h tempo offline massimo per livello',level:0, baseCost:3, growthRate:1.25, effect:'offline_flat',increment:0.5 }
+    ],
+    buildings: [
+      { id:'casa',     name:'Casa',     icon:'🏠', desc:'Aumenta la popolazione del regno',     baseCost:15,    growthRate:1.14, baseProduction:0.01, level:0, unlockAt:0,  resource:'population' },
+      { id:'miniera',  name:'Miniera',  icon:'⛏️', desc:'Estrae oro dalle profondità',           baseCost:120,   growthRate:1.15, baseProduction:3,    level:0, unlockAt:0,  resource:'gold' },
+      { id:'segheria', name:'Segheria', icon:'🪵', desc:'Taglia tronchi e produce legno',        baseCost:900,   growthRate:1.16, baseProduction:16,   level:0, unlockAt:5,  resource:'wood' },
+      { id:'fattoria', name:'Fattoria', icon:'🌾', desc:'Coltiva e vende il raccolto per oro',   baseCost:6500,  growthRate:1.17, baseProduction:90,   level:0, unlockAt:10, resource:'gold' },
+      { id:'cava',     name:'Cava',     icon:'🪨', desc:'Estrae pietra dalle cave del regno',    baseCost:42000, growthRate:1.18, baseProduction:480,  level:0, unlockAt:20, resource:'stone' }
+    ],
+    upgrades: [
+      { id:'tap2',      name:'Guanti di cuoio',   icon:'🧤', desc:'Guadagno tocco ×2',              cost:50,        type:'tap_mult', value:2,  owned:false },
+      { id:'tap3',      name:'Guanti rinforzati', icon:'🥊', desc:'Guadagno tocco ×5',              cost:5000,      type:'tap_mult', value:5,  owned:false },
+      { id:'tap4',      name:'Manopole d\'acciaio',icon:'🦾', desc:'Guadagno tocco ×10',            cost:500000,    type:'tap_mult', value:10, owned:false },
+      { id:'tap5',      name:'Pugno del Re',      icon:'👊', desc:'Guadagno tocco ×25',             cost:40000000,  type:'tap_mult', value:25, owned:false },
+
+      { id:'casa2',     name:'Consiglio cittadino', icon:'🏛️', desc:'Bonus popolazione ×2',         cost:400,       type:'building_mult', building:'casa', value:2, owned:false, costResource:'wood' },
+      { id:'casa3',     name:'Editto demografico',  icon:'📜', desc:'Bonus popolazione ×3',         cost:15000,     type:'building_mult', building:'casa', value:3, owned:false, costResource:'stone' },
+
+      { id:'miniera2',  name:'Picconi d\'acciaio',icon:'⚒️', desc:'Produzione Miniera ×2',          cost:3000,      type:'building_mult', building:'miniera', value:2, owned:false },
+      { id:'miniera3',  name:'Esplosivo da mina',  icon:'🧨', desc:'Produzione Miniera ×3',          cost:90000,     type:'building_mult', building:'miniera', value:3, owned:false },
+
+      { id:'segheria2', name:'Lame affilate',     icon:'🪚', desc:'Produzione Segheria ×2',         cost:20000,     type:'building_mult', building:'segheria', value:2, owned:false, costResource:'wood' },
+      { id:'segheria3', name:'Sega a vapore',     icon:'🏭', desc:'Produzione Segheria ×3',         cost:600000,    type:'building_mult', building:'segheria', value:3, owned:false, costResource:'wood' },
+
+      { id:'fattoria2', name:'Semi selezionati',  icon:'🌱', desc:'Produzione Fattoria ×2',         cost:140000,    type:'building_mult', building:'fattoria', value:2, owned:false, costResource:'wood' },
+      { id:'fattoria3', name:'Benedizione del raccolto', icon:'🙏', desc:'Produzione Fattoria ×3',  cost:4000000,   type:'building_mult', building:'fattoria', value:3, owned:false, costResource:'stone' },
+
+      { id:'cava2',     name:'Picconi rinforzati',icon:'⛏️', desc:'Produzione Cava ×2',             cost:300000,    type:'building_mult', building:'cava', value:2, owned:false, costResource:'stone' },
+      { id:'cava3',     name:'Esplosivo da cava', icon:'💥', desc:'Produzione Cava ×3',             cost:2200000,   type:'building_mult', building:'cava', value:3, owned:false, costResource:'stone' },
+
+      { id:'globalx2',  name:'Editto del Re',     icon:'👑', desc:'Tutta la produzione ×2',         cost:75000,     type:'global_mult', value:2, owned:false },
+      { id:'globalx3',  name:'Proclama reale',    icon:'📯', desc:'Tutta la produzione ×3',         cost:650000,    type:'global_mult', value:3, owned:false },
+      { id:'globalx5',  name:'Editto imperiale',  icon:'🏵️', desc:'Tutta la produzione ×5',         cost:9500000,   type:'global_mult', value:5, owned:false },
+
+      { id:'offline12', name:'Vedetta notturna',  icon:'🕯️', desc:'Tempo offline massimo: 12h',     cost:8000,      type:'offline_cap', value:12, owned:false },
+      { id:'offline24', name:'Corvo messaggero',  icon:'🐦', desc:'Tempo offline massimo: 24h',     cost:180000,    type:'offline_cap', value:24, owned:false },
+      { id:'offline48', name:'Torre d\'avvistamento',icon:'🗼', desc:'Tempo offline massimo: 48h',   cost:1600000,   type:'offline_cap', value:48, owned:false },
+
+      { id:'servo1',    name:'Servo meccanico',   icon:'🤖', desc:'+10 oro/s fissi, indipendenti dagli edifici', cost:2500,   type:'flat_production', value:10,  owned:false },
+      { id:'servo2',    name:'Automa avanzato',   icon:'⚙️', desc:'+200 oro/s fissi, indipendenti dagli edifici', cost:250000, type:'flat_production', value:200, owned:false },
+
+      { id:'holdActionUnlock', name:'Ritmo Instancabile', icon:'🔁', desc:'Tenendo premuto sul tocco o su "Compra" negli edifici, l\'azione si ripete da sola', cost:1000000000000, type:'hold_to_act', owned:false, requiresLifetimeGold:1000000000000 }
+    ],
+    infiniteUpgrades: [
+      { id:'inf_tap',      name:'Allenamento del Tocco', icon:'💪', desc:'+5% guadagno tocco per livello',      level:0, baseCost:300,     growthRate:1.22, effect:'tap_pct',      increment:0.05 },
+      { id:'inf_global',   name:'Decreto di Prosperità', icon:'👑', desc:'+3% produzione totale per livello',   level:0, baseCost:8000,    growthRate:1.28, effect:'global_pct',   increment:0.03 },
+      { id:'inf_casa',     name:'Crescita demografica',  icon:'👨‍👩‍👧', desc:'+5% bonus popolazione per livello',   level:0, baseCost:100,     growthRate:1.20, effect:'building_pct', building:'casa',     increment:0.05 },
+      { id:'inf_miniera',  name:'Maestria: Miniera',     icon:'⛏️', desc:'+5% produzione Miniera per livello',  level:0, baseCost:800,     growthRate:1.21, effect:'building_pct', building:'miniera',  increment:0.05 },
+      { id:'inf_segheria', name:'Maestria: Segheria',    icon:'🪵', desc:'+5% produzione Segheria per livello', level:0, baseCost:6000,    growthRate:1.22, effect:'building_pct', building:'segheria', increment:0.05, costResource:'wood' },
+      { id:'inf_fattoria', name:'Maestria: Fattoria',    icon:'🌾', desc:'+5% produzione Fattoria per livello', level:0, baseCost:45000,   growthRate:1.23, effect:'building_pct', building:'fattoria', increment:0.05 },
+      { id:'inf_cava',     name:'Maestria: Cava',        icon:'🪨', desc:'+5% produzione Cava per livello',     level:0, baseCost:300000,  growthRate:1.24, effect:'building_pct', building:'cava',     increment:0.05, costResource:'stone' }
+    ]
+  },
+
+  totalRate(){
+    // tasso di produzione dell'ORO soltanto (usato per prestigio, achievement, eventi, ads)
+    return this.ratesByResource().gold;
+  },
+
+  ratesByResource(){
+    let gold = 0, wood = 0, stone = 0;
+    for(const b of this.state.buildings){
+      if(b.resource === 'population') continue; // Casa non produce risorse, dà un bonus %
+      const prod = EconomyManager.buildingProduction(b) * this.buildingMultiplier(b.id);
+      if(b.resource === 'gold') gold += prod;
+      else if(b.resource === 'wood') wood += prod;
+      else if(b.resource === 'stone') stone += prod;
+    }
+    let flatBonus = 0;
+    for(const u of this.state.upgrades){
+      if(u.owned && u.type === 'flat_production') flatBonus += u.value;
+    }
+    gold += flatBonus;
+
+    const gMult = this.globalMultiplier();
+    let boostMult = 1;
+    if(this.state.activeBoost && this.state.activeBoost.endsAt > Date.now()) boostMult = this.state.activeBoost.multiplier;
+
+    return {
+      gold: gold * gMult * boostMult,
+      wood: wood * gMult * boostMult,
+      stone: stone * gMult * boostMult
+    };
+  },
+
+  buildingMultiplier(buildingId){
+    let mult = 1;
+    for(const u of this.state.upgrades){
+      if(u.owned && u.type === 'building_mult' && u.building === buildingId) mult *= u.value;
+    }
+    const inf = this.state.infiniteUpgrades.find(i => i.effect === 'building_pct' && i.building === buildingId);
+    if(inf) mult *= (1 + inf.level * inf.increment);
+    return mult;
+  },
+
+  globalMultiplier(){
+    let mult = 1;
+    for(const u of this.state.upgrades){
+      if(u.owned && u.type === 'global_mult') mult *= u.value;
+    }
+    // crowns: rendimento decrescente, +2% per la radice quadrata delle corone possedute
+    // (prima era lineare: con centinaia di migliaia di corone il moltiplicatore esplodeva
+    // e rendeva irrilevante ogni altro sistema del gioco — vedi simulate-progress.js)
+    mult *= (1 + Math.sqrt(this.state.prestige.crowns) * 0.02);
+    // prestige shop percentage bonuses stack additively then apply
+    let pctBonus = 0;
+    for(const p of this.state.prestigeShop){
+      if(p.owned && p.type === 'global_pct') pctBonus += p.value;
+    }
+    const infGlobal = this.state.infiniteUpgrades.find(i => i.effect === 'global_pct');
+    if(infGlobal) pctBonus += infGlobal.level * infGlobal.increment;
+    const infPrestigeGlobal = this.state.infinitePrestigeUpgrades.find(i => i.effect === 'global_pct');
+    if(infPrestigeGlobal) pctBonus += infPrestigeGlobal.level * infPrestigeGlobal.increment;
+    // bonus popolazione dato dalla Casa (produzione totale, non una risorsa a sé)
+    const casa = this.state.buildings.find(b => b.id === 'casa');
+    if(casa) pctBonus += EconomyManager.buildingProduction(casa) * this.buildingMultiplier('casa');
+    mult *= (1 + pctBonus);
+    return mult;
+  },
+
+  tapValue(){
+    let val = this.state.tapBase;
+    for(const u of this.state.upgrades){
+      if(u.owned && u.type === 'tap_mult') val *= u.value;
+    }
+    let pctBonus = 0;
+    for(const p of this.state.prestigeShop){
+      if(p.owned && p.type === 'tap_pct') pctBonus += p.value;
+    }
+    const infTap = this.state.infiniteUpgrades.find(i => i.effect === 'tap_pct');
+    if(infTap) pctBonus += infTap.level * infTap.increment;
+    const infPrestigeTap = this.state.infinitePrestigeUpgrades.find(i => i.effect === 'tap_pct');
+    if(infPrestigeTap) pctBonus += infPrestigeTap.level * infPrestigeTap.increment;
+    val *= (1 + pctBonus);
+    return val * this.globalMultiplier();
+  },
+
+  isHoldUnlocked(){
+    const u = this.state.upgrades.find(x => x.id === 'holdActionUnlock');
+    return !!(u && u.owned);
+  },
+
+  offlineCapHours(){
+    let cap = this.state.maxOfflineHours;
+    for(const u of this.state.upgrades){
+      if(u.owned && u.type === 'offline_cap') cap = Math.max(cap, u.value);
+    }
+    for(const p of this.state.prestigeShop){
+      if(p.owned && p.type === 'offline_cap') cap += p.value;
+    }
+    const infPrestigeOffline = this.state.infinitePrestigeUpgrades.find(i => i.effect === 'offline_flat');
+    if(infPrestigeOffline) cap += infPrestigeOffline.level * infPrestigeOffline.increment;
+    return cap;
+  },
+
+  addGold(amount){
+    this.state.gold += amount;
+    this.state.totalGoldEarned += amount;
+    this.state.stats.lifetimeGoldEarned += amount;
+  },
+
+  addWood(amount){
+    this.state.wood += amount;
+    this.state.stats.lifetimeWoodEarned += amount;
+  },
+
+  addStone(amount){
+    this.state.stone += amount;
+    this.state.stats.lifetimeStoneEarned += amount;
+  },
+
+  getResource(res){
+    if(res === 'wood') return this.state.wood;
+    if(res === 'stone') return this.state.stone;
+    return this.state.gold;
+  },
+
+  spendResource(res, amount){
+    if(res === 'wood') this.state.wood -= amount;
+    else if(res === 'stone') this.state.stone -= amount;
+    else this.state.gold -= amount;
+  },
+
+  tap(x, y){
+    const val = this.tapValue();
+    this.addGold(val);
+    this.state.stats.totalTaps++;
+    AudioManager.click();
+    AudioManager.vibrate(8);
+    UIManager.showFloatText(x, y, '+' + EconomyManager.format(val));
+    UIManager.pulseTapButton();
+    UIManager.refreshAll();
+  },
+
+  buyBuilding(id){
+    const b = this.state.buildings.find(bb => bb.id === id);
+    if(!b) return;
+    const cost = EconomyManager.buildingCost(b);
+    if(this.state.gold < cost) return;
+    this.state.gold -= cost;
+    this.state.stats.buildingsBoughtTotal++;
+    const wasZero = b.level === 0;
+    b.level++;
+    if(wasZero) AudioManager.unlock(); else AudioManager.upgrade();
+    UIManager.refreshAll();
+  },
+
+  buyUpgrade(id){
+    const u = this.state.upgrades.find(uu => uu.id === id);
+    if(!u || u.owned) return;
+    if(u.requiresLifetimeGold && this.state.stats.lifetimeGoldEarned < u.requiresLifetimeGold) return;
+    const res = u.costResource || 'gold';
+    if(this.getResource(res) < u.cost) return;
+    this.spendResource(res, u.cost);
+    u.owned = true;
+    AudioManager.upgrade();
+    UIManager.refreshAll();
+  },
+
+  infiniteUpgradeCost(u){
+    return Math.ceil(u.baseCost * Math.pow(u.growthRate, u.level));
+  },
+
+  buyInfiniteUpgrade(id){
+    const u = this.state.infiniteUpgrades.find(uu => uu.id === id);
+    if(!u) return;
+    const cost = this.infiniteUpgradeCost(u);
+    const res = u.costResource || 'gold';
+    if(this.getResource(res) < cost) return;
+    this.spendResource(res, cost);
+    u.level++;
+    AudioManager.upgrade();
+    UIManager.refreshAll();
+  },
+
+  tick(deltaSeconds){
+    const rates = this.ratesByResource();
+    if(rates.gold > 0) this.addGold(rates.gold * deltaSeconds);
+    if(rates.wood > 0) this.addWood(rates.wood * deltaSeconds);
+    if(rates.stone > 0) this.addStone(rates.stone * deltaSeconds);
+    AchievementManager.checkAll();
+  }
+};
+
+/* =========================================================================
+   OFFLINE MANAGER
+   ========================================================================= */
+const OfflineManager = {
+  computeOffline(){
+    const now = Date.now();
+    const last = GameManager.state.lastSave || now;
+    let deltaMs = now - last;
+
+    // anti-cheat: clock rolled backwards or absurd future save -> ignore
+    if(deltaMs < 0) deltaMs = 0;
+    const capMs = GameManager.offlineCapHours() * 3600 * 1000;
+    const cappedMs = Math.min(deltaMs, capMs);
+
+    const seconds = cappedMs / 1000;
+    const rawSeconds = deltaMs / 1000;
+    if(seconds < 5) return null; // not worth showing a modal for a few seconds away
+
+    const rates = GameManager.ratesByResource();
+    return {
+      seconds, rawSeconds,
+      earned: rates.gold * seconds,
+      earnedWood: rates.wood * seconds,
+      earnedStone: rates.stone * seconds,
+      capped: deltaMs > capMs
+    };
+  },
+  applyAndShow(){
+    const result = this.computeOffline();
+    if(!result) return;
+    GameManager.addGold(result.earned);
+    if(result.earnedWood > 0) GameManager.addWood(result.earnedWood);
+    if(result.earnedStone > 0) GameManager.addStone(result.earnedStone);
+    const hrs = Math.floor(result.rawSeconds / 3600);
+    const mins = Math.floor((result.rawSeconds % 3600) / 60);
+    const canDouble = AdManager.canWatch();
+    const doubleBtn = canDouble
+      ? `<button class="modal-btn" style="background:var(--copper);color:#fff" onclick="AdManager.doubleOffline(${result.earned}, () => { UIManager.closeModal(); UIManager.showToast('📺 Ricompensa offline raddoppiata!'); })">📺 Guarda un video per raddoppiare</button>`
+      : '';
+    const extraLines = [
+      result.earnedWood > 0 ? `+${EconomyManager.format(result.earnedWood)} 🪵` : '',
+      result.earnedStone > 0 ? `+${EconomyManager.format(result.earnedStone)} 🪨` : ''
+    ].filter(Boolean).join(' &nbsp; ');
+    document.getElementById('modalBox').innerHTML = `
+      <h2>⏳ BENTORNATO</h2>
+      <p>Sei stato via ${hrs}h ${mins}m</p>
+      ${result.capped ? `<p style="color:#C9B896;font-size:15px">(limite offline: ${GameManager.offlineCapHours()}h)</p>` : ''}
+      <p>Produzione offline:<br><span style="color:var(--gold)">+${EconomyManager.format(result.earned)} 💰</span></p>
+      ${extraLines ? `<p style="font-size:16px">${extraLines}</p>` : ''}
+      ${doubleBtn}
+      <button class="modal-btn" onclick="UIManager.closeModal()">OK</button>
+    `;
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+};
+
+/* =========================================================================
+   SAVE MANAGER
+   ========================================================================= */
+const SaveManager = {
+  KEY: 'piccolo_regno_save_v1',
+
+  save(){
+    GameManager.state.lastSave = Date.now();
+    try{
+      localStorage.setItem(this.KEY, JSON.stringify(GameManager.state));
+    }catch(e){ console.warn('Salvataggio fallito', e); }
+  },
+
+  load(){
+    try{
+      const raw = localStorage.getItem(this.KEY);
+      if(!raw) return false;
+      const loaded = JSON.parse(raw);
+
+      // conserva un riferimento agli oggetti/array di default PRIMA di sovrascrivere,
+      // altrimenti Object.assign sostituirebbe interi oggetti/array (es. settings, buildings)
+      // con la versione vecchia salvata, perdendo campi aggiunti dagli aggiornamenti successivi
+      // (bug reale riscontrato: prima settings.language spariva; poi building.resource spariva
+      // e la produzione di oro/legno/pietra restava bloccata a 0 per i salvataggi pre-esistenti)
+      const nestedDefaults = {
+        stats: GameManager.state.stats,
+        settings: GameManager.state.settings,
+        prestige: GameManager.state.prestige,
+        achievements: GameManager.state.achievements,
+        quests: GameManager.state.quests,
+        ads: GameManager.state.ads,
+        activeBoost: GameManager.state.activeBoost
+      };
+      const defaultArrays = {
+        buildings: GameManager.state.buildings,
+        upgrades: GameManager.state.upgrades,
+        prestigeShop: GameManager.state.prestigeShop,
+        infiniteUpgrades: GameManager.state.infiniteUpgrades,
+        infinitePrestigeUpgrades: GameManager.state.infinitePrestigeUpgrades
+      };
+
+      Object.assign(GameManager.state, loaded);
+
+      // ripristina ogni oggetto annidato partendo dai default correnti e sovrascrivendo
+      // solo i campi che il salvataggio caricato effettivamente possiede
+      for(const key of Object.keys(nestedDefaults)){
+        GameManager.state[key] = Object.assign({}, nestedDefaults[key], loaded[key] || {});
+      }
+
+      // ripristina gli array (edifici/upgrade/ecc.) alle definizioni CORRENTI del codice —
+      // Object.assign qui sopra li aveva sostituiti con l'array vecchio salvato — poi
+      // riporta solo i campi indicati (livello/posseduto) dal salvataggio, per id
+      for(const key of Object.keys(defaultArrays)){
+        GameManager.state[key] = defaultArrays[key];
+      }
+      this._mergeArray(GameManager.state.buildings, loaded.buildings, ['level']);
+      this._mergeArray(GameManager.state.upgrades, loaded.upgrades, ['owned']);
+      this._mergeArray(GameManager.state.prestigeShop, loaded.prestigeShop, ['owned']);
+      this._mergeArray(GameManager.state.infiniteUpgrades, loaded.infiniteUpgrades, ['level']);
+      this._mergeArray(GameManager.state.infinitePrestigeUpgrades, loaded.infinitePrestigeUpgrades, ['level']);
+
+      // rileva un salvataggio precedente al sistema Oro/Legno/Pietra (edifici con vecchi id)
+      // per mostrare un avviso una tantum invece di lasciare che sembri un bug
+      const oldIds = ['orto', 'fucina', 'mercato', 'banca'];
+      const hasOldIds = Array.isArray(loaded.buildings) && loaded.buildings.some(b => oldIds.includes(b.id) && b.level > 0);
+      if(hasOldIds && !GameManager.state.migrationNoticeShown){
+        GameManager._showMigrationNotice = true;
+      }
+
+      return true;
+    }catch(e){
+      console.warn('Caricamento fallito', e);
+      return false;
+    }
+  },
+
+  _mergeArray(defaults, saved, fieldsToCopy){
+    if(!saved) return;
+    for(const def of defaults){
+      const match = saved.find(s => s.id === def.id);
+      if(match){
+        for(const f of fieldsToCopy) if(match[f] !== undefined) def[f] = match[f];
+      }
+    }
+  },
+
+  exportSave(){
+    GameManager.state.lastSave = Date.now();
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(GameManager.state))));
+    UIManager.showModal('📤 ESPORTA', `
+      <p style="font-size:14px">Copia questo codice e conservalo:</p>
+      <textarea readonly style="width:100%;height:100px;font-size:11px;background:#111;color:#0f0;border:2px solid var(--panel-border);border-radius:6px;padding:6px;">${encoded}</textarea>
+    `);
+  },
+
+  promptImport(){
+    UIManager.showModal('📥 IMPORTA', `
+      <p style="font-size:14px">Incolla qui il codice di backup:</p>
+      <textarea id="importArea" style="width:100%;height:100px;font-size:11px;background:#111;color:#0f0;border:2px solid var(--panel-border);border-radius:6px;padding:6px;"></textarea>
+      <button class="modal-btn" onclick="SaveManager.doImport()">Importa</button>
+    `);
+  },
+
+  doImport(){
+    const val = document.getElementById('importArea').value.trim();
+    try{
+      const decoded = JSON.parse(decodeURIComponent(escape(atob(val))));
+      const nestedDefaults = {
+        stats: GameManager.state.stats,
+        settings: GameManager.state.settings,
+        prestige: GameManager.state.prestige,
+        achievements: GameManager.state.achievements,
+        quests: GameManager.state.quests,
+        ads: GameManager.state.ads,
+        activeBoost: GameManager.state.activeBoost
+      };
+      const defaultArrays = {
+        buildings: GameManager.state.buildings,
+        upgrades: GameManager.state.upgrades,
+        prestigeShop: GameManager.state.prestigeShop,
+        infiniteUpgrades: GameManager.state.infiniteUpgrades,
+        infinitePrestigeUpgrades: GameManager.state.infinitePrestigeUpgrades
+      };
+      Object.assign(GameManager.state, decoded);
+      for(const key of Object.keys(nestedDefaults)){
+        GameManager.state[key] = Object.assign({}, nestedDefaults[key], decoded[key] || {});
+      }
+      for(const key of Object.keys(defaultArrays)){
+        GameManager.state[key] = defaultArrays[key];
+      }
+      this._mergeArray(GameManager.state.buildings, decoded.buildings, ['level']);
+      this._mergeArray(GameManager.state.upgrades, decoded.upgrades, ['owned']);
+      this._mergeArray(GameManager.state.prestigeShop, decoded.prestigeShop, ['owned']);
+      this._mergeArray(GameManager.state.infiniteUpgrades, decoded.infiniteUpgrades, ['level']);
+      this._mergeArray(GameManager.state.infinitePrestigeUpgrades, decoded.infinitePrestigeUpgrades, ['level']);
+      this.save();
+      UIManager.closeModal();
+      UIManager.refreshAll();
+      UIManager.showModal('✅ FATTO', '<p>Salvataggio importato con successo.</p>');
+    }catch(e){
+      UIManager.showModal('❌ ERRORE', '<p>Codice non valido.</p>');
+    }
+  },
+
+  resetGame(){
+    UIManager.showModal('🗑️ CONFERMA', `
+      <p>Vuoi davvero cancellare tutti i progressi?</p>
+      <button class="modal-btn" style="background:var(--danger);color:#fff" onclick="localStorage.removeItem('${this.KEY}'); location.reload();">Sì, cancella tutto</button>
+      <button class="modal-btn" onclick="UIManager.closeModal()">Annulla</button>
+    `);
+  }
+};
+
+/* =========================================================================
+   PRESTIGE MANAGER
+   ========================================================================= */
+const PrestigeManager = {
+  MIN_LIFETIME_TO_PRESTIGE: 1000000, // 1M oro totale guadagnato nella run corrente
+
+  potentialCrowns(){
+    const earned = GameManager.state.totalGoldEarned;
+    if(earned < this.MIN_LIFETIME_TO_PRESTIGE) return 0;
+    return Math.floor(Math.sqrt(earned / this.MIN_LIFETIME_TO_PRESTIGE));
+  },
+
+  canPrestige(){
+    return this.potentialCrowns() > 0;
+  },
+
+  doPrestige(){
+    const gained = this.potentialCrowns();
+    if(gained <= 0) return;
+    GameManager.state.prestige.crowns += gained;
+    GameManager.state.stats.totalPrestiges++;
+
+    // reset run-specific progress
+    GameManager.state.gold = 0;
+    GameManager.state.wood = 0;
+    GameManager.state.stone = 0;
+    GameManager.state.totalGoldEarned = 0;
+    for(const b of GameManager.state.buildings) b.level = 0;
+    for(const u of GameManager.state.upgrades) u.owned = false;
+    for(const iu of GameManager.state.infiniteUpgrades) iu.level = 0;
+
+    // apply starting gold bonus from prestige shop, if owned
+    for(const p of GameManager.state.prestigeShop){
+      if(p.owned && p.type === 'starting_gold') GameManager.state.gold += p.value;
+    }
+
+    UIManager.closeModal();
+    UIManager.refreshAll();
+    AudioManager.prestige();
+    AudioManager.vibrate(40);
+    UIManager.showModal('👑 RINASCITA!', `<p>Hai ottenuto <span style="color:var(--gold)">+${gained} 👑</span></p><p style="font-size:15px;color:#C9B896">Il tuo regno riparte da zero, ma più forte che mai.</p>`);
+    AchievementManager.checkAll();
+  },
+
+  buyShopItem(id){
+    const p = GameManager.state.prestigeShop.find(pp => pp.id === id);
+    if(!p || p.owned) return;
+    if(GameManager.state.prestige.crowns < p.cost) return;
+    GameManager.state.prestige.crowns -= p.cost;
+    p.owned = true;
+    AudioManager.upgrade();
+    UIManager.refreshAll();
+  },
+
+  buyInfiniteShopItem(id){
+    const u = GameManager.state.infinitePrestigeUpgrades.find(uu => uu.id === id);
+    if(!u) return;
+    const cost = GameManager.infiniteUpgradeCost(u);
+    if(GameManager.state.prestige.crowns < cost) return;
+    GameManager.state.prestige.crowns -= cost;
+    u.level++;
+    AudioManager.upgrade();
+    UIManager.refreshAll();
+  }
+};
+
+/* =========================================================================
+   QUEST MANAGER
+   ========================================================================= */
+const QuestManager = {
+  list: [
+    { id:'q1',  name:'I primi passi',        desc:'Tocca 50 volte',                 reward:100,    check:() => GameManager.state.stats.totalTaps >= 50 },
+    { id:'q2',  name:'Primo mattone',        desc:'Compra il tuo primo edificio',    reward:50,     check:() => GameManager.state.stats.buildingsBoughtTotal >= 1 },
+    { id:'q3',  name:'Piccolo villaggio',    desc:'Possiedi 10 edifici in totale',   reward:500,    check:() => GameManager.state.buildings.reduce((a,b)=>a+b.level,0) >= 10 },
+    { id:'q4',  name:'Miniera in espansione',desc:'Porta la Miniera al livello 10',  reward:1200,   check:() => (GameManager.state.buildings.find(b=>b.id==='miniera')||{}).level >= 10 },
+    { id:'q5',  name:'Primo potenziamento',  desc:'Acquista un upgrade qualsiasi',   reward:300,    check:() => GameManager.state.upgrades.some(u=>u.owned) },
+    { id:'q6',  name:'Regno produttivo',     desc:'Raggiungi 100 oro/s di produzione', reward:2000, check:() => GameManager.totalRate() >= 100 },
+    { id:'q7',  name:'Piccola fortuna',      desc:'Guadagna 1.000 oro in totale',    reward:150,    check:() => GameManager.state.stats.lifetimeGoldEarned >= 1000 },
+    { id:'q8',  name:'Grande fortuna',       desc:'Guadagna 1.000.000 di oro in totale', reward:5000, check:() => GameManager.state.stats.lifetimeGoldEarned >= 1000000 },
+    { id:'q9',  name:'Diversifica',          desc:'Possiedi almeno 1 livello in 4 edifici diversi', reward:2500, check:() => GameManager.state.buildings.filter(b=>b.level>0).length >= 4 },
+    { id:'q10', name:'Rinascita reale',      desc:'Effettua la tua prima Rinascita', reward:0, rewardCrowns:2, check:() => GameManager.state.stats.totalPrestiges >= 1 },
+    { id:'q11', name:'Instancabile',         desc:'Tocca 500 volte',                reward:3000,   check:() => GameManager.state.stats.totalTaps >= 500 },
+    { id:'q12', name:'Impero consolidato',   desc:'Possiedi tutti e 5 gli edifici almeno a livello 1', reward:8000, check:() => GameManager.state.buildings.every(b=>b.level>0) },
+    { id:'q13', name:'Boscaiolo',            desc:'Produci 500 legno in totale',    reward:400,    check:() => GameManager.state.stats.lifetimeWoodEarned >= 500 },
+    { id:'q14', name:'Scalpellino',          desc:'Produci 300 pietra in totale',   reward:600,    check:() => GameManager.state.stats.lifetimeStoneEarned >= 300 }
+  ],
+
+  checkAndRenderNeeded(){
+    return true; // rendering handled by UIManager each refresh
+  },
+
+  claim(id){
+    const q = this.list.find(qq => qq.id === id);
+    if(!q) return;
+    if(GameManager.state.quests.claimedIds.includes(id)) return;
+    if(!q.check()) return;
+    if(q.reward) GameManager.addGold(q.reward);
+    if(q.rewardCrowns) GameManager.state.prestige.crowns += q.rewardCrowns;
+    GameManager.state.quests.claimedIds.push(id);
+    UIManager.refreshAll();
+  }
+};
+
+/* =========================================================================
+   ACHIEVEMENT MANAGER
+   ========================================================================= */
+const AchievementManager = {
+  list: (() => {
+    const arr = [];
+    const goldTiers = [1000,10000,100000,1000000,10000000,100000000,1000000000,10000000000,100000000000,1000000000000];
+    goldTiers.forEach((t,i) => arr.push({
+      id:'gold_'+i, icon:'💰', hidden:false,
+      name:`Fortuna ${EconomyManager.format(t)}`,
+      desc:`Guadagna ${EconomyManager.format(t)} oro in totale`,
+      check: () => GameManager.state.stats.lifetimeGoldEarned >= t
+    }));
+
+    const buildingNames = { casa:'Casa', miniera:'Miniera', segheria:'Segheria', fattoria:'Fattoria', cava:'Cava' };
+    const buildingIds = Object.keys(buildingNames);
+    const levelTiers = [10,25,50,100];
+    for(const bid of buildingIds){
+      for(const lvl of levelTiers){
+        arr.push({
+          id:`bld_${bid}_${lvl}`, icon:'🏗️', hidden:false,
+          name:`${buildingNames[bid]} Lv.${lvl}`,
+          desc:`Porta ${buildingNames[bid]} al livello ${lvl}`,
+          check: () => { const b = GameManager.state.buildings.find(x=>x.id===bid); return b && b.level >= lvl; }
+        });
+      }
+    }
+
+    const woodTiers = [1000,100000,10000000];
+    woodTiers.forEach((t,i) => arr.push({
+      id:'wood_'+i, icon:'🪵', hidden:false,
+      name:`Falegname ${EconomyManager.format(t)}`,
+      desc:`Produci ${EconomyManager.format(t)} legno in totale`,
+      check: () => GameManager.state.stats.lifetimeWoodEarned >= t
+    }));
+
+    const stoneTiers = [1000,100000,10000000];
+    stoneTiers.forEach((t,i) => arr.push({
+      id:'stone_'+i, icon:'🪨', hidden:false,
+      name:`Scalpellino ${EconomyManager.format(t)}`,
+      desc:`Produci ${EconomyManager.format(t)} pietra in totale`,
+      check: () => GameManager.state.stats.lifetimeStoneEarned >= t
+    }));
+
+    const tapTiers = [100,1000,10000];
+    tapTiers.forEach((t,i) => arr.push({
+      id:'tap_'+i, icon:'👆', hidden:false,
+      name:`${t} tocchi`,
+      desc:`Tocca ${t} volte`,
+      check: () => GameManager.state.stats.totalTaps >= t
+    }));
+
+    const prestigeTiers = [1,5,10];
+    prestigeTiers.forEach((t,i) => arr.push({
+      id:'prestige_'+i, icon:'👑', hidden: t>=10,
+      name: t===1 ? 'Prima Rinascita' : `${t} Rinascite`,
+      desc: `Effettua ${t} Rinascite`,
+      check: () => GameManager.state.stats.totalPrestiges >= t
+    }));
+
+    const totalBuildingsTiers = [10,50,100,250];
+    totalBuildingsTiers.forEach((t,i) => arr.push({
+      id:'totbld_'+i, icon:'🏰', hidden:false,
+      name:`Regno di ${t}`,
+      desc:`Possiedi ${t} edifici in totale (somma livelli)`,
+      check: () => GameManager.state.buildings.reduce((a,b)=>a+b.level,0) >= t
+    }));
+
+    arr.push({
+      id:'week', icon:'📅', hidden:true,
+      name:'Sovrano fedele',
+      desc:'Gioca per 7 giorni dall\'inizio della partita',
+      check: () => (Date.now() - GameManager.state.stats.firstPlayed) >= 7*24*3600*1000
+    });
+
+    const rateTiers = [1000,10000,100000];
+    rateTiers.forEach((t,i) => arr.push({
+      id:'rate_'+i, icon:'📈', hidden:false,
+      name:`Produzione ${EconomyManager.format(t)}/s`,
+      desc:`Raggiungi ${EconomyManager.format(t)} oro al secondo`,
+      check: () => GameManager.totalRate() >= t
+    }));
+
+    arr.push({
+      id:'all_upgrades', icon:'⬆️', hidden:true,
+      name:'Collezionista',
+      desc:'Acquista tutti gli upgrade base disponibili',
+      check: () => GameManager.state.upgrades.every(u=>u.owned)
+    });
+
+    arr.push({
+      id:'all_buildings', icon:'🏛️', hidden:false,
+      name:'Nessun angolo vuoto',
+      desc:'Possiedi almeno 1 livello in ogni edificio',
+      check: () => GameManager.state.buildings.every(b=>b.level>0)
+    });
+
+    arr.push({
+      id:'rare_event', icon:'🌟', hidden:true,
+      name:'Il mercante misterioso',
+      desc:'Incontra un evento raro',
+      check: () => GameManager.state.stats.rareEventsTriggered >= 1
+    });
+
+    return arr;
+  })(),
+
+  checkAll(){
+    const unlocked = GameManager.state.achievements.unlockedIds;
+    for(const a of this.list){
+      if(!unlocked.includes(a.id) && a.check()){
+        unlocked.push(a.id);
+        AudioManager.achievement();
+        UIManager.showToast(`🏆 Achievement sbloccato: ${a.name}`);
+      }
+    }
+  }
+};
+
+/* =========================================================================
+   EVENT MANAGER — eventi casuali
+   ========================================================================= */
+const EventManager = {
+  activeChallenge: null,
+  challengeInterval: null,
+  timer: null,
+
+  scheduleNext(){
+    const delay = 45000 + Math.random() * 75000; // 45s - 120s
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.trigger(), delay);
+  },
+
+  trigger(){
+    // non disturbare durante tutorial, modali aperte o tab in background
+    const modalOpen = document.getElementById('modalOverlay').classList.contains('show');
+    if(document.hidden || modalOpen || GameManager.state.firstRun){
+      this.scheduleNext();
+      return;
+    }
+    const roll = Math.random();
+    if(roll < 0.50) this.triggerBoom();
+    else if(roll < 0.75) this.triggerTreasure();
+    else if(roll < 0.90) this.triggerInvasion();
+    else this.triggerRare();
+    this.scheduleNext();
+  },
+
+  triggerBoom(){
+    GameManager.state.activeBoost = { multiplier: 5, endsAt: Date.now() + 30000, label: 'Boom produttivo' };
+    UIManager.showToast('🔥 Boom produttivo! Produzione ×5 per 30 secondi');
+    UIManager.refreshAll();
+  },
+
+  triggerTreasure(){
+    this.startChallenge({
+      title: '💰 TESORO NASCOSTO',
+      body: 'Un forziere è apparso! Toccalo più volte possibile prima che scompaia.',
+      icon: '💰',
+      duration: 8,
+      rewardPerTap: () => Math.max(1, GameManager.totalRate() * 0.5 + GameManager.tapValue())
+    });
+  },
+
+  triggerInvasion(){
+    this.startChallenge({
+      title: '👾 INVASIONE!',
+      body: 'I predoni attaccano il regno: tocca lo scudo per respingerli!',
+      icon: '🛡️',
+      duration: 6,
+      rewardPerTap: () => Math.max(1, GameManager.totalRate() * 0.8 + GameManager.tapValue())
+    });
+  },
+
+  triggerRare(){
+    const bonus = Math.max(1000, GameManager.totalRate() * 300);
+    GameManager.addGold(bonus);
+    GameManager.state.stats.rareEventsTriggered++;
+    UIManager.refreshAll();
+    UIManager.showModal('🌟 EVENTO RARO!', `
+      <p style="font-size:16px">Un mercante misterioso attraversa il regno e ti dona:</p>
+      <p style="color:var(--gold);font-size:26px">+${EconomyManager.format(bonus)} 💰</p>
+    `);
+  },
+
+  startChallenge(cfg){
+    this.activeChallenge = { taps: 0, endsAt: Date.now() + cfg.duration * 1000, cfg };
+    this.renderChallengeModal();
+    clearInterval(this.challengeInterval);
+    this.challengeInterval = setInterval(() => {
+      if(!this.activeChallenge) { clearInterval(this.challengeInterval); return; }
+      const remaining = Math.max(0, Math.ceil((this.activeChallenge.endsAt - Date.now()) / 1000));
+      const timerEl = document.getElementById('challengeTimer');
+      if(timerEl) timerEl.textContent = remaining + 's';
+      if(Date.now() >= this.activeChallenge.endsAt) this.finishChallenge();
+    }, 200);
+  },
+
+  renderChallengeModal(){
+    const cfg = this.activeChallenge.cfg;
+    document.getElementById('modalBox').innerHTML = `
+      <h2>${cfg.title}</h2>
+      <p style="font-size:16px">${cfg.body}</p>
+      <p style="font-size:14px;color:#C9B896">Tempo: <span id="challengeTimer">${cfg.duration}s</span> — Tocchi: <span id="challengeCount">0</span></p>
+      <div id="challengeTarget" style="width:120px;height:120px;margin:14px auto;background:radial-gradient(circle at 35% 30%, #FFE8A3, var(--gold) 55%, var(--copper) 100%); border:5px solid var(--panel-border); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:48px; cursor:pointer; transition:transform .05s;">${cfg.icon}</div>
+    `;
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('challengeTarget').addEventListener('click', () => this.registerTap());
+  },
+
+  registerTap(){
+    if(!this.activeChallenge) return;
+    this.activeChallenge.taps++;
+    const countEl = document.getElementById('challengeCount');
+    if(countEl) countEl.textContent = this.activeChallenge.taps;
+    const target = document.getElementById('challengeTarget');
+    if(target){ target.style.transform = 'scale(0.88)'; setTimeout(() => { if(target) target.style.transform = ''; }, 60); }
+  },
+
+  finishChallenge(){
+    clearInterval(this.challengeInterval);
+    if(!this.activeChallenge) return;
+    const { taps, cfg } = this.activeChallenge;
+    const reward = Math.floor(taps * cfg.rewardPerTap());
+    GameManager.addGold(reward);
+    this.activeChallenge = null;
+    UIManager.refreshAll();
+    UIManager.showModal('✅ RICOMPENSA', `
+      <p>Hai totalizzato ${taps} tocchi!</p>
+      <p style="color:var(--gold);font-size:24px">+${EconomyManager.format(reward)} 💰</p>
+    `);
+  }
+};
+
+/* =========================================================================
+   AUDIO MANAGER — suoni ed effetti generati via Web Audio API
+   (nessun file audio esterno necessario: funziona offline)
+   ========================================================================= */
+const AudioManager = {
+  ctx: null,
+  musicNodes: null,
+
+  ensureCtx(){
+    if(!this.ctx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) this.ctx = new AC();
+    }
+    if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+
+  playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0){
+    if(!GameManager.state.settings.sfxOn) return;
+    this.ensureCtx();
+    if(!this.ctx) return;
+    const t0 = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.05);
+  },
+
+  click(){ this.playTone(880, 0.06, 'square', 0.08); },
+  upgrade(){ this.playTone(523.25, 0.08, 'triangle', 0.12); this.playTone(783.99, 0.1, 'triangle', 0.12, 0.08); },
+  unlock(){ this.playTone(659.25, 0.12, 'sine', 0.14); this.playTone(987.77, 0.15, 'sine', 0.14, 0.1); },
+  achievement(){ [523.25, 659.25, 783.99, 1046.5].forEach((f,i) => this.playTone(f, 0.15, 'triangle', 0.13, i*0.09)); },
+  prestige(){ [392, 523.25, 659.25, 783.99, 1046.5].forEach((f,i) => this.playTone(f, 0.2, 'sawtooth', 0.1, i*0.11)); },
+
+  toggleMusic(){
+    GameManager.state.settings.musicOn = !GameManager.state.settings.musicOn;
+    if(GameManager.state.settings.musicOn) this.startMusic(); else this.stopMusic();
+    UIManager.refreshAll();
+  },
+  toggleSfx(){ GameManager.state.settings.sfxOn = !GameManager.state.settings.sfxOn; UIManager.refreshAll(); },
+  toggleVibration(){ GameManager.state.settings.vibrationOn = !GameManager.state.settings.vibrationOn; UIManager.refreshAll(); },
+  vibrate(ms){ if(GameManager.state.settings.vibrationOn && navigator.vibrate) navigator.vibrate(ms); },
+
+  startMusic(){
+    this.ensureCtx();
+    if(!this.ctx || this.musicNodes) return;
+    const masterGain = this.ctx.createGain();
+    masterGain.gain.value = 0.05;
+    masterGain.connect(this.ctx.destination);
+    const osc1 = this.ctx.createOscillator(); osc1.type = 'sine'; osc1.frequency.value = 196;    // G3
+    const osc2 = this.ctx.createOscillator(); osc2.type = 'sine'; osc2.frequency.value = 246.94;  // B3
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 0.07;
+    const lfoGain = this.ctx.createGain(); lfoGain.gain.value = 0.03;
+    lfo.connect(lfoGain).connect(masterGain.gain);
+    osc1.connect(masterGain); osc2.connect(masterGain);
+    osc1.start(); osc2.start(); lfo.start();
+    this.musicNodes = { masterGain, osc1, osc2, lfo };
+  },
+  stopMusic(){
+    if(!this.musicNodes) return;
+    const { masterGain, osc1, osc2, lfo } = this.musicNodes;
+    try{ osc1.stop(); osc2.stop(); lfo.stop(); }catch(e){}
+    masterGain.disconnect();
+    this.musicNodes = null;
+  }
+};
+
+/* =========================================================================
+   AD MANAGER — rewarded ads (video simulato, pronto per un network reale)
+   ========================================================================= */
+const AdManager = {
+  MAX_PER_DAY: 5,
+  COOLDOWN_MS: 3 * 60 * 1000,
+
+  today(){ return new Date().toISOString().slice(0,10); },
+
+  resetIfNewDay(){
+    if(GameManager.state.ads.lastAdDate !== this.today()){
+      GameManager.state.ads.lastAdDate = this.today();
+      GameManager.state.ads.adsWatchedToday = 0;
+    }
+  },
+
+  canWatch(){
+    this.resetIfNewDay();
+    return GameManager.state.ads.adsWatchedToday < this.MAX_PER_DAY && Date.now() >= GameManager.state.ads.cooldownUntil;
+  },
+  remainingToday(){ this.resetIfNewDay(); return this.MAX_PER_DAY - GameManager.state.ads.adsWatchedToday; },
+  cooldownSecondsLeft(){ return Math.max(0, Math.ceil((GameManager.state.ads.cooldownUntil - Date.now()) / 1000)); },
+
+  requestAd(rewardLabel, onReward){
+    if(!this.canWatch()){
+      UIManager.showModal('⏳ ANNUNCI ESAURITI', '<p style="font-size:16px">Hai raggiunto il limite di video per oggi, oppure devi attendere ancora un momento. Torna più tardi!</p>');
+      return;
+    }
+    this.playSimulatedAd(rewardLabel, onReward);
+  },
+
+  playSimulatedAd(rewardLabel, onReward){
+    let seconds = 5;
+    document.getElementById('modalBox').innerHTML = `
+      <h2>📺 ANNUNCIO</h2>
+      <p style="font-size:16px">${rewardLabel}</p>
+      <p style="font-size:34px;color:var(--gold)" id="adCountdown">${seconds}</p>
+      <p style="font-size:12px;color:#C9B896">(video dimostrativo — qui si collega un vero network pubblicitario)</p>
+    `;
+    document.getElementById('modalOverlay').classList.add('show');
+    const interval = setInterval(() => {
+      seconds--;
+      const el = document.getElementById('adCountdown');
+      if(el) el.textContent = seconds;
+      if(seconds <= 0){
+        clearInterval(interval);
+        GameManager.state.ads.adsWatchedToday++;
+        GameManager.state.ads.cooldownUntil = Date.now() + this.COOLDOWN_MS;
+        UIManager.closeModal();
+        onReward();
+      }
+    }, 1000);
+  },
+
+  boostProduction(){
+    this.requestAd('Guarda per ottenere ×2 produzione per 10 minuti', () => {
+      const current = GameManager.state.activeBoost;
+      const newEnd = Date.now() + 10 * 60 * 1000;
+      if(!current || current.endsAt < Date.now() || current.multiplier <= 2){
+        GameManager.state.activeBoost = { multiplier: 2, endsAt: newEnd, label: 'Boost pubblicitario' };
+      } else {
+        current.endsAt = Math.max(current.endsAt, newEnd);
+      }
+      UIManager.refreshAll();
+      UIManager.showToast('📺 ×2 produzione per 10 minuti!');
+    });
+  },
+
+  randomReward(){
+    this.requestAd('Guarda per una ricompensa casuale', () => {
+      const bonus = Math.max(500, GameManager.totalRate() * (60 + Math.random() * 180));
+      GameManager.addGold(bonus);
+      UIManager.refreshAll();
+      UIManager.showModal('🎁 RICOMPENSA', `<p style="color:var(--gold);font-size:26px">+${EconomyManager.format(bonus)} 💰</p>`);
+    });
+  },
+
+  doubleOffline(pendingAmount, onDone){
+    this.requestAd('Guarda per raddoppiare la ricompensa offline', () => {
+      GameManager.addGold(pendingAmount);
+      onDone();
+    });
+  }
+};
+
+/* =========================================================================
+   LOCALIZATION MANAGER
+   ========================================================================= */
+const TRANSLATIONS = {
+  it: {
+    nav_home:'Home', nav_buildings:'Edifici', nav_upgrades:'Upgrade', nav_prestige:'Prestigio', nav_quests:'Missioni', nav_achievements:'Trofei', nav_settings:'Opzioni',
+    title_buildings:'🏗️ EDIFICI', title_upgrades:'⬆️ UPGRADE', title_infinite:'♾️ POTENZIAMENTI INFINITI',
+    infinite_hint:'Questi si possono ricomprare all\'infinito: il costo sale ogni volta, ma non finiscono mai.',
+    title_prestige:'⭐ PRESTIGIO — RINASCITA', title_quests:'🎯 MISSIONI', title_achievements:'🏆 ACHIEVEMENT', title_settings:'⚙️ IMPOSTAZIONI',
+    title_prestige_shop:'🪙 NEGOZIO DELLA CORONA', title_infinite_prestige:'♾️ POTENZIAMENTI INFINITI DELLA CORONA',
+    infinite_prestige_hint:'Costano Corone, non finiscono mai e restano per sempre, anche dopo una nuova Rinascita.',
+    tap_hint:'Tocca per raccogliere',
+    row_rate:'Produzione al secondo', row_wood:'🪵 Legno al secondo', row_stone:'🪨 Pietra al secondo', row_buildings:'Edifici posseduti', row_offline:'Tempo offline max',
+    set_music:'Musica', set_sfx:'Effetti sonori', set_vibration:'Vibrazione', set_language:'Lingua',
+    set_notifications:'Notifiche', set_quality:'Qualità grafica', set_battery:'Risparmio batteria',
+    set_export:'Esporta salvataggio', set_export_desc:'Copia il codice di backup',
+    set_import:'Importa salvataggio', set_import_desc:'Incolla un codice di backup',
+    set_reset:'Reset partita', set_reset_desc:'Cancella tutti i progressi',
+    on:'Attivo', off:'Disattivato', high:'Alta', low:'Bassa'
+  },
+  en: {
+    nav_home:'Home', nav_buildings:'Buildings', nav_upgrades:'Upgrades', nav_prestige:'Prestige', nav_quests:'Quests', nav_achievements:'Trophies', nav_settings:'Settings',
+    title_buildings:'🏗️ BUILDINGS', title_upgrades:'⬆️ UPGRADES', title_infinite:'♾️ INFINITE UPGRADES',
+    infinite_hint:'These can be bought again and again: the cost rises each time, but they never run out.',
+    title_prestige:'⭐ PRESTIGE — REBIRTH', title_quests:'🎯 QUESTS', title_achievements:'🏆 ACHIEVEMENTS', title_settings:'⚙️ SETTINGS',
+    title_prestige_shop:'🪙 CROWN SHOP', title_infinite_prestige:'♾️ INFINITE CROWN UPGRADES',
+    infinite_prestige_hint:'They cost Crowns, never run out, and stay forever — even after a new Rebirth.',
+    tap_hint:'Tap to collect',
+    row_rate:'Production per second', row_wood:'🪵 Wood per second', row_stone:'🪨 Stone per second', row_buildings:'Buildings owned', row_offline:'Max offline time',
+    set_music:'Music', set_sfx:'Sound effects', set_vibration:'Vibration', set_language:'Language',
+    set_notifications:'Notifications', set_quality:'Graphics quality', set_battery:'Battery saver',
+    set_export:'Export save', set_export_desc:'Copy the backup code',
+    set_import:'Import save', set_import_desc:'Paste a backup code',
+    set_reset:'Reset game', set_reset_desc:'Erase all progress',
+    on:'On', off:'Off', high:'High', low:'Low'
+  }
+};
+
+const LocalizationManager = {
+  t(key){
+    const lang = GameManager.state.settings.language;
+    return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || key;
+  },
+
+  toggle(){
+    GameManager.state.settings.language = GameManager.state.settings.language === 'it' ? 'en' : 'it';
+    this.apply();
+    UIManager.updateSettingsUI();
+  },
+
+  apply(){
+    const t = (k) => this.t(k);
+    const set = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
+    set('navlabel-home', t('nav_home'));
+    set('navlabel-buildings', t('nav_buildings'));
+    set('navlabel-upgrades', t('nav_upgrades'));
+    set('navlabel-prestige', t('nav_prestige'));
+    set('navlabel-quests', t('nav_quests'));
+    set('navlabel-achievements', t('nav_achievements'));
+    set('navlabel-settings', t('nav_settings'));
+    set('title-buildings', t('title_buildings'));
+    set('title-upgrades', t('title_upgrades'));
+    set('title-infinite', t('title_infinite'));
+    set('infinite-hint', t('infinite_hint'));
+    set('title-prestige', t('title_prestige'));
+    set('title-prestige-shop', t('title_prestige_shop'));
+    set('title-infinite-prestige', t('title_infinite_prestige'));
+    set('infinite-prestige-hint', t('infinite_prestige_hint'));
+    set('title-quests', t('title_quests'));
+    set('title-achievements', t('title_achievements'));
+    set('title-settings', t('title_settings'));
+    set('tapHintText', t('tap_hint'));
+    set('labelRate', t('row_rate'));
+    set('labelWood', t('row_wood'));
+    set('labelStone', t('row_stone'));
+    set('labelBuildings', t('row_buildings'));
+    set('labelOffline', t('row_offline'));
+    set('lbl-music', t('set_music'));
+    set('lbl-sfx', t('set_sfx'));
+    set('lbl-vibration', t('set_vibration'));
+    set('lbl-language', t('set_language'));
+    set('lbl-notifications', t('set_notifications'));
+    set('lbl-quality', t('set_quality'));
+    set('lbl-battery', t('set_battery'));
+    set('lbl-export', t('set_export'));
+    set('lbl-export-desc', t('set_export_desc'));
+    set('lbl-import', t('set_import'));
+    set('lbl-import-desc', t('set_import_desc'));
+    set('lbl-reset', t('set_reset'));
+    set('lbl-reset-desc', t('set_reset_desc'));
+    set('languageStatus', GameManager.state.settings.language === 'it' ? '🇮🇹 Italiano' : '🇬🇧 English');
+  }
+};
+
+/* =========================================================================
+   NOTIFICATION MANAGER — promemoria mentre l'app resta aperta in background
+   (le notifiche a gioco completamente chiuso richiederebbero un server push)
+   ========================================================================= */
+const NotificationManager = {
+  pingTimeout: null,
+
+  toggle(){
+    const s = GameManager.state.settings;
+    if(!s.notificationsOn){
+      if(!('Notification' in window)){
+        UIManager.showToast('Le notifiche non sono supportate su questo browser');
+        return;
+      }
+      Notification.requestPermission().then(perm => {
+        if(perm === 'granted'){
+          s.notificationsOn = true;
+        } else {
+          UIManager.showToast('Permesso notifiche negato');
+        }
+        UIManager.updateSettingsUI();
+      });
+    } else {
+      s.notificationsOn = false;
+      this.cancelBackgroundPing();
+      UIManager.updateSettingsUI();
+    }
+  },
+
+  scheduleBackgroundPing(){
+    this.cancelBackgroundPing();
+    if(!GameManager.state.settings.notificationsOn) return;
+    this.pingTimeout = setTimeout(() => {
+      if(document.hidden && Notification.permission === 'granted'){
+        const rate = GameManager.totalRate();
+        try{
+          new Notification('👑 Piccolo Regno', {
+            body: `Il tuo regno sta producendo ${EconomyManager.format(rate)} oro/s mentre sei via!`
+          });
+        }catch(e){}
+      }
+    }, 60 * 60 * 1000); // dopo 1 ora in background
+  },
+
+  cancelBackgroundPing(){
+    clearTimeout(this.pingTimeout);
+  }
+};
+
+/* =========================================================================
+   GRAPHICS MANAGER — qualità grafica e risparmio batteria
+   ========================================================================= */
+const GraphicsManager = {
+  toggleQuality(){
+    const s = GameManager.state.settings;
+    s.quality = s.quality === 'high' ? 'low' : 'high';
+    document.getElementById('app').classList.toggle('low-fx', s.quality === 'low');
+    UIManager.updateSettingsUI();
+  },
+  toggleBattery(){
+    GameManager.state.settings.batterySaver = !GameManager.state.settings.batterySaver;
+    UIManager.updateSettingsUI();
+  },
+  applyOnBoot(){
+    if(GameManager.state.settings.quality === 'low'){
+      document.getElementById('app').classList.add('low-fx');
+    }
+  }
+};
+
+/* =========================================================================
+   PIXEL ART — sprite degli edifici generati da griglie di pixel (nessuna
+   immagine esterna: solo codice, facilmente modificabile anche da smartphone)
+   ========================================================================= */
+const BUILDING_ART = {
+  casa: {
+    pal: { R:'#B87333', W:'#5D4037', Y:'#FFE8A3', D:'#2A1810', H:'#0D0D16', F:'#D4AF37' },
+    stages: [
+      { minLevel: 0, grid: [
+        "................",
+        "................",
+        "........R.......",
+        ".......RRR......",
+        "......RRRRR.....",
+        ".....WWWWWWW....",
+        ".....WWWWWWW....",
+        ".....WWWWWWW....",
+        ".....WWWWWWW....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "....HHHHHHHH....",
+        "................",
+        "................"
+      ]},
+      { minLevel: 25, grid: [
+        "................",
+        ".......RR.......",
+        "......RRRR......",
+        ".....RRRRRR.....",
+        "....RRRRRRRR....",
+        "...RRRRRRRRRR...",
+        "..WWWWWWWWWWWW..",
+        "..WWWWWWWWWWWW..",
+        "..WWYYWWWWYYWW..",
+        "..WWYYWWWWYYWW..",
+        "..WWWWWWWWWWWW..",
+        "..WWWWDDDDWWWW..",
+        "..WWWWDDDDWWWW..",
+        "..WWWWDDDDWWWW..",
+        "..HHHHHHHHHHHH..",
+        "................"
+      ]},
+      { minLevel: 50, grid: [
+        "................",
+        ".......F........",
+        ".......RR.......",
+        "......RRRR......",
+        ".....RRRRRR.....",
+        "....RRRRRRRR....",
+        "...RRRRRRRRRR...",
+        "..WWWWWWWWWWWW..",
+        "..WWWWWWWWWWWW..",
+        "..WWYYWWWWYYWW..",
+        "..WWYYWWWWYYWW..",
+        "..WWWWWWWWWWWW..",
+        "..WWWWDDDDWWWW..",
+        "..WWWWDDDDWWWW..",
+        "..WWWWDDDDWWWW..",
+        "..HHHHHHHHHHHH.."
+      ]}
+    ]
+  },
+  miniera: {
+    pal: { M:'#7A6A58', B:'#3E2723', C:'#0D0D16', W:'#5D4037', H:'#0D0D16', o:'#FFD65A' },
+    stages: [
+      { minLevel: 0, grid: [
+        "................",
+        "................",
+        "................",
+        ".......MM.......",
+        "......MMMM......",
+        ".....MMMMMM.....",
+        "....MMMMMMMM....",
+        "...MMMMMMMMMM...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "HHHHHHHHHHHHHHHH",
+        "................",
+        "................"
+      ]},
+      { minLevel: 25, grid: [
+        "................",
+        "........MM......",
+        ".......MMMM.....",
+        "......MMMMMM....",
+        ".....MMMMMMMM...",
+        "....MMMMMMMMMM..",
+        "...MMMMMMMMMMMM.",
+        "..MMMMMMMMMMMMMM",
+        ".MMMMMBBBBMMMMMM",
+        "MMMMMMBCCBMMMMMM",
+        "MMMMMMBCCBMMMMMM",
+        "MMMMMMBBBBMMMMMM",
+        "MMMMMMMMWWMMMMMM",
+        "MMMMMMMMWWMMMMMM",
+        "HHHHHHHHHHHHHHHH",
+        "................"
+      ]},
+      { minLevel: 50, grid: [
+        "................",
+        "........MM......",
+        ".......MMMM.....",
+        "......MMMMMM....",
+        ".....MMMMMMMM...",
+        "....MMMMMMMMMM..",
+        "...MMMMMMMMMMMM.",
+        "..MMMMMMMMMMMMMM",
+        ".MMMMMBBBBMMMMMM",
+        "MMMMMMBoCBMMMMMM",
+        "MMMMMMBCCBMMMMMM",
+        "MMMMMMBBBBMMMMMM",
+        "MMMMMMMMWWMMMMMM",
+        "MMMMMMMMWWMMMMMM",
+        "HHHHHHHHHHHHHHHH",
+        "................"
+      ]}
+    ]
+  },
+  segheria: {
+    pal: { L:'#8B5A2B', o:'#C9975A', S:'#B0B0B8', H:'#0D0D16', x:'#FFE8A3' },
+    stages: [
+      { minLevel: 0, grid: [
+        "................",
+        "................",
+        "................",
+        "................",
+        "....LLLLLLLL....",
+        "...LLLLLLLLLL...",
+        "....LLLLLLLL....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "HHHHHHHHHHHHHHHH",
+        "................",
+        "................"
+      ]},
+      { minLevel: 25, grid: [
+        "................",
+        "...LLLLLLLLLL...",
+        "..LLLLLLLLLLLL..",
+        ".LLoLLoLLoLLoL..",
+        ".LLLLLLLLLLLLL..",
+        "..LLLLLLLLLLL...",
+        "...LLLLLLLLL....",
+        "................",
+        ".......SS.......",
+        "......SSSS......",
+        ".....SSSSSS.....",
+        "......SSSS......",
+        ".......SS.......",
+        "................",
+        "HHHHHHHHHHHHHHHH",
+        "................"
+      ]},
+      { minLevel: 50, grid: [
+        "................",
+        "...LLLLLLLLLL...",
+        "..LLLLLLLLLLLL..",
+        ".LLoLLoLLoLLoL..",
+        ".LLLLLLLLLLLLL..",
+        "..LLLLLLLLLLL...",
+        "...LLLLLLLLL....",
+        ".......x........",
+        ".......SS.......",
+        "......SSSS......",
+        ".....SSSSSS.....",
+        "......SSSS......",
+        ".......SS.......",
+        ".......x........",
+        "HHHHHHHHHHHHHHHH",
+        "................"
+      ]}
+    ]
+  },
+  fattoria: {
+    pal: { R:'#B87333', W:'#8D6E52', Y:'#FFE8A3', D:'#2A1810', g:'#D4AF37', H:'#0D0D16', s:'#FFE8A3' },
+    stages: [
+      { minLevel: 0, grid: [
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "....gg..gg......",
+        "...gggg.gggg....",
+        "..gggggggggggg..",
+        "HHHHHHHHHHHHHHHH",
+        "................",
+        "................"
+      ]},
+      { minLevel: 25, grid: [
+        "................",
+        "......RR........",
+        ".....RRRR.......",
+        "....RRRRRR......",
+        "...RRRRRRRR.....",
+        "...WWWWWWWW.....",
+        "...WWYYWWWW.....",
+        "...WWYYWWWW.....",
+        "...WWWWWWWW.....",
+        "...WWWDDWWW.....",
+        "...WWWDDWWW.....",
+        "................",
+        "....gg..gg......",
+        "...gggg.gggg....",
+        "..gggggggggggg..",
+        "HHHHHHHHHHHHHHHH"
+      ]},
+      { minLevel: 50, grid: [
+        "......s.........",
+        "......RR........",
+        ".....RRRR.......",
+        "....RRRRRR......",
+        "...RRRRRRRR.....",
+        "...WWWWWWWW.....",
+        "...WWYYWWWW.....",
+        "...WWYYWWWW.....",
+        "...WWWWWWWW.....",
+        "...WWWDDWWW.....",
+        "...WWWDDWWW.....",
+        "................",
+        "....gg..gg......",
+        "...gggg.gggg....",
+        "..gggggggggggg..",
+        "HHHHHHHHHHHHHHHH"
+      ]}
+    ]
+  },
+  cava: {
+    pal: { C:'#8A8A92', H:'#0D0D16', x:'#FFE8A3' },
+    stages: [
+      { minLevel: 0, grid: [
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "...CCCC..CCCC...",
+        "..CCCCCCCCCCCCC.",
+        ".CCCCCCCCCCCCCCC",
+        "..CCCCCCCCCCCC..",
+        "...CCCCCCCCCC...",
+        "....CCCCCCCC....",
+        "................",
+        "HHHHHHHHHHHHHHHH",
+        "................",
+        "................"
+      ]},
+      { minLevel: 25, grid: [
+        "................",
+        "..CCCC..........",
+        ".CCCCCC.CCCC....",
+        "CCCCCCCCCCCCCC..",
+        "CCCCCCCCCCCCCCC.",
+        ".CCCCCCCCCCCCCC.",
+        "..CCCCCCCCCCCC..",
+        "...CCCCCCCCCC...",
+        "....CCCCCCCC....",
+        ".....CCCCCC.....",
+        "......CCCC......",
+        ".......CC.......",
+        "................",
+        "HHHHHHHHHHHHHHHH",
+        "................",
+        "................"
+      ]},
+      { minLevel: 50, grid: [
+        "................",
+        "..CCCC..........",
+        ".CCCCCC.CCCC....",
+        "CCCCCCxCCCCCCC..",
+        "CCCCCCCCCCCCCCC.",
+        ".CCCCCCCCCCCCCC.",
+        "..CCCCCCCCCCCC..",
+        "...CCCCCCCCCC...",
+        "....CCCCCCCC....",
+        ".....CCCCCC.....",
+        "......CCCC......",
+        ".......CC.......",
+        "................",
+        "HHHHHHHHHHHHHHHH",
+        "................",
+        "................"
+      ]}
+    ]
+  }
+};
+
+function pickBuildingStage(art, level){
+  let chosen = art.stages[0];
+  for(const s of art.stages){ if(level >= s.minLevel) chosen = s; }
+  return chosen;
+}
+
+function pixelIconSVG(art, level, size){
+  size = size || 44;
+  const grid = pickBuildingStage(art, level || 0).grid;
+  const cols = grid[0].length;
+  const rows = grid.length;
+  const cell = size / cols;
+  let rects = '';
+  for(let y = 0; y < rows; y++){
+    for(let x = 0; x < cols; x++){
+      const ch = grid[y][x];
+      const color = art.pal[ch];
+      if(!color) continue;
+      rects += `<rect x="${(x*cell).toFixed(2)}" y="${(y*cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}" fill="${color}"/>`;
+    }
+  }
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+
+/* =========================================================================
+   UI MANAGER
+   ========================================================================= */
+const UIManager = {
+  currentView: 'home',
+
+  init(){
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.switchView(btn.dataset.view));
+    });
+    const tapBtn = document.getElementById('tapButton');
+    const doTap = () => {
+      const rect = tapBtn.getBoundingClientRect();
+      GameManager.tap(rect.left + rect.width/2, rect.top + rect.height/2 - 20);
+    };
+    this.attachHoldToRepeat(tapBtn, doTap);
+    this.renderResourceBar();
+    this.renderBuildings();
+    this.renderUpgrades();
+    this.renderInfiniteUpgrades();
+    this.renderPrestigeShop();
+    this.renderInfinitePrestigeUpgrades();
+    this.renderQuests();
+    this.renderAchievements();
+    this.refreshAll();
+  },
+
+  attachHoldToRepeat(el, actionFn){
+    let holdTimeout = null;
+    let holdInterval = null;
+    const start = (e) => {
+      e.preventDefault();
+      actionFn(); // azione immediata, sempre disponibile
+      clearTimeout(holdTimeout);
+      clearInterval(holdInterval);
+      // la ripetizione automatica tenendo premuto richiede l'upgrade "Ritmo Instancabile"
+      if(!GameManager.isHoldUnlocked()) return;
+      holdTimeout = setTimeout(() => {
+        holdInterval = setInterval(actionFn, 120);
+      }, 350);
+    };
+    const stop = () => {
+      clearTimeout(holdTimeout);
+      clearInterval(holdInterval);
+      holdInterval = null;
+    };
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointerleave', stop);
+    el.addEventListener('pointercancel', stop);
+  },
+
+  switchView(name){
+    this.currentView = name;
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  },
+
+  renderResourceBar(){
+    document.getElementById('resourceBar').innerHTML = `
+      <div class="resource-chip">💰 <span class="amt" id="goldAmt">0</span></div>
+      <div class="resource-chip">🪵 <span class="amt" id="woodAmt">0</span></div>
+      <div class="resource-chip">🪨 <span class="amt" id="stoneAmt">0</span></div>
+      <div class="resource-chip">📈 <span class="rate" id="rateAmt">+0/s</span></div>
+      <div class="resource-chip" id="boostChip" style="display:none;background:#7a3f12;border-color:var(--gold);">🔥 <span id="boostText"></span></div>
+    `;
+  },
+
+  renderBuildings(){
+    const list = document.getElementById('buildingsList');
+    list.innerHTML = '';
+    for(const b of GameManager.state.buildings){
+      const div = document.createElement('div');
+      div.className = 'building-card';
+      div.id = 'bcard-' + b.id;
+      div.innerHTML = `
+        <div class="b-icon">${BUILDING_ART[b.id] ? pixelIconSVG(BUILDING_ART[b.id], b.level) : b.icon}</div>
+        <div class="b-info">
+          <div class="b-name">${b.name} <span style="color:var(--gold)" id="blvl-${b.id}">Lv.${b.level}</span></div>
+          <div class="b-desc">${b.desc}</div>
+          <div class="b-stats" id="bstats-${b.id}"></div>
+        </div>
+        <div class="b-buy" id="bbuy-${b.id}">
+          Compra<span class="cost" id="bcost-${b.id}"></span>
+        </div>
+      `;
+      list.appendChild(div);
+      const buyBtn = div.querySelector('#bbuy-' + b.id);
+      this.attachHoldToRepeat(buyBtn, () => GameManager.buyBuilding(b.id));
+      if(BUILDING_ART[b.id]){
+        this._buildingStage = this._buildingStage || {};
+        this._buildingStage[b.id] = BUILDING_ART[b.id].stages.indexOf(pickBuildingStage(BUILDING_ART[b.id], b.level));
+      }
+    }
+  },
+
+  renderUpgrades(){
+    const list = document.getElementById('upgradesList');
+    list.innerHTML = '';
+    for(const u of GameManager.state.upgrades){
+      const div = document.createElement('div');
+      div.className = 'upgrade-card';
+      div.id = 'ucard-' + u.id;
+      div.innerHTML = `
+        <div class="u-icon">${u.icon}</div>
+        <div class="u-info">
+          <div class="u-name">${u.name}</div>
+          <div class="u-desc">${u.desc}</div>
+        </div>
+        <div class="u-buy" id="ubuy-${u.id}" onclick="GameManager.buyUpgrade('${u.id}')"></div>
+      `;
+      list.appendChild(div);
+    }
+  },
+
+  renderInfiniteUpgrades(){
+    const list = document.getElementById('infiniteUpgradesList');
+    list.innerHTML = '';
+    for(const u of GameManager.state.infiniteUpgrades){
+      const div = document.createElement('div');
+      div.className = 'building-card';
+      div.id = 'infcard-' + u.id;
+      div.innerHTML = `
+        <div class="b-icon">${u.icon}</div>
+        <div class="b-info">
+          <div class="b-name">${u.name} <span style="color:var(--gold)" id="inflvl-${u.id}">Lv.${u.level}</span></div>
+          <div class="b-desc">${u.desc}</div>
+          <div class="b-stats" id="infstats-${u.id}"></div>
+        </div>
+        <div class="b-buy" id="infbuy-${u.id}">
+          Compra<span class="cost" id="infcost-${u.id}"></span>
+        </div>
+      `;
+      list.appendChild(div);
+      const buyBtn = div.querySelector('#infbuy-' + u.id);
+      this.attachHoldToRepeat(buyBtn, () => GameManager.buyInfiniteUpgrade(u.id));
+    }
+  },
+
+  renderPrestigeShop(){
+    const list = document.getElementById('prestigeShopList');
+    list.innerHTML = '';
+    for(const p of GameManager.state.prestigeShop){
+      const div = document.createElement('div');
+      div.className = 'prestige-shop-card';
+      div.id = 'pcard-' + p.id;
+      div.innerHTML = `
+        <div class="b-icon">${p.icon}</div>
+        <div class="b-info">
+          <div class="b-name">${p.name}</div>
+          <div class="b-desc">${p.desc}</div>
+        </div>
+        <div class="b-buy" id="pbuy-${p.id}" onclick="PrestigeManager.buyShopItem('${p.id}')"></div>
+      `;
+      list.appendChild(div);
+    }
+  },
+
+  renderInfinitePrestigeUpgrades(){
+    const list = document.getElementById('infinitePrestigeList');
+    list.innerHTML = '';
+    for(const u of GameManager.state.infinitePrestigeUpgrades){
+      const div = document.createElement('div');
+      div.className = 'prestige-shop-card';
+      div.id = 'pinfcard-' + u.id;
+      div.innerHTML = `
+        <div class="b-icon">${u.icon}</div>
+        <div class="b-info">
+          <div class="b-name">${u.name} <span style="color:var(--gold)" id="pinflvl-${u.id}">Lv.${u.level}</span></div>
+          <div class="b-desc">${u.desc}</div>
+          <div class="b-stats" id="pinfstats-${u.id}"></div>
+        </div>
+        <div class="b-buy" id="pinfbuy-${u.id}">
+          Compra<span class="cost" id="pinfcost-${u.id}"></span>
+        </div>
+      `;
+      list.appendChild(div);
+      const buyBtn = div.querySelector('#pinfbuy-' + u.id);
+      this.attachHoldToRepeat(buyBtn, () => PrestigeManager.buyInfiniteShopItem(u.id));
+    }
+  },
+
+  renderQuests(){
+    const list = document.getElementById('questsList');
+    list.innerHTML = '';
+    for(const q of QuestManager.list){
+      const div = document.createElement('div');
+      div.className = 'quest-card';
+      div.id = 'qcard-' + q.id;
+      const rewardText = q.rewardCrowns ? `+${q.rewardCrowns} 👑` : `+${EconomyManager.format(q.reward)} 💰`;
+      div.innerHTML = `
+        <div class="quest-info">
+          <div class="quest-name">${q.name}</div>
+          <div class="quest-desc">${q.desc}</div>
+          <div class="quest-progress">Ricompensa: ${rewardText}</div>
+        </div>
+        <div class="quest-claim" id="qclaim-${q.id}" onclick="QuestManager.claim('${q.id}')"></div>
+      `;
+      list.appendChild(div);
+    }
+  },
+
+  renderAchievements(){
+    const grid = document.getElementById('achievementsGrid');
+    grid.innerHTML = '';
+    for(const a of AchievementManager.list){
+      const div = document.createElement('div');
+      div.className = 'ach-cell';
+      div.id = 'ach-' + a.id;
+      grid.appendChild(div);
+    }
+  },
+
+  refreshAll(){
+    const gold = GameManager.state.gold;
+    const rates = GameManager.ratesByResource();
+    document.getElementById('goldAmt').textContent = EconomyManager.format(gold);
+    document.getElementById('woodAmt').textContent = EconomyManager.format(GameManager.state.wood);
+    document.getElementById('stoneAmt').textContent = EconomyManager.format(GameManager.state.stone);
+    document.getElementById('rateAmt').textContent = '+' + EconomyManager.format(rates.gold) + '/s';
+    document.getElementById('tapValueLabel').textContent = '+' + EconomyManager.format(GameManager.tapValue());
+    document.getElementById('sumRate').textContent = '+' + EconomyManager.format(rates.gold) + '/s';
+    const sumWoodEl = document.getElementById('sumWood'); if(sumWoodEl) sumWoodEl.textContent = '+' + EconomyManager.format(rates.wood) + '/s';
+    const sumStoneEl = document.getElementById('sumStone'); if(sumStoneEl) sumStoneEl.textContent = '+' + EconomyManager.format(rates.stone) + '/s';
+    document.getElementById('sumBuildings').textContent = GameManager.state.buildings.reduce((a,b)=>a+b.level,0);
+    document.getElementById('sumOffline').textContent = GameManager.offlineCapHours() + 'h';
+
+    const boost = GameManager.state.activeBoost;
+    const boostChip = document.getElementById('boostChip');
+    if(boost && boost.endsAt > Date.now()){
+      boostChip.style.display = 'flex';
+      const secsLeft = Math.ceil((boost.endsAt - Date.now())/1000);
+      document.getElementById('boostText').textContent = `×${boost.multiplier} per ${secsLeft}s`;
+    } else {
+      boostChip.style.display = 'none';
+    }
+
+    const resourceIcons = { gold:'💰', wood:'🪵', stone:'🪨' };
+    for(const b of GameManager.state.buildings){
+      const cost = EconomyManager.buildingCost(b);
+      const card = document.getElementById('bcard-' + b.id);
+      const unlocked = GameManager.state.buildings.reduce((a,bb)=>a+bb.level,0) >= b.unlockAt || b.level > 0 || b.unlockAt === 0;
+      if(!card) continue;
+      document.getElementById('blvl-' + b.id).textContent = 'Lv.' + b.level;
+      card.classList.toggle('locked', !unlocked);
+      if(BUILDING_ART[b.id]){
+        const stageIndex = BUILDING_ART[b.id].stages.indexOf(pickBuildingStage(BUILDING_ART[b.id], b.level));
+        if(this._buildingStage[b.id] !== stageIndex){
+          this._buildingStage[b.id] = stageIndex;
+          const iconEl = card.querySelector('.b-icon');
+          if(iconEl) iconEl.innerHTML = pixelIconSVG(BUILDING_ART[b.id], b.level);
+        }
+      }
+      let statsText;
+      if(!unlocked){
+        statsText = `Sblocca a ${b.unlockAt} edifici totali`;
+      } else if(b.resource === 'population'){
+        const bonusPct = Math.round(EconomyManager.buildingProduction(b) * GameManager.buildingMultiplier(b.id) * 1000) / 10;
+        statsText = `+${bonusPct}% produzione totale (popolazione)`;
+      } else {
+        const prod = EconomyManager.buildingProduction(b) * GameManager.buildingMultiplier(b.id);
+        statsText = `Produce ${EconomyManager.format(prod)} ${resourceIcons[b.resource] || ''}/s`;
+      }
+      document.getElementById('bstats-' + b.id).textContent = statsText;
+      const buyBtn = document.getElementById('bbuy-' + b.id);
+      document.getElementById('bcost-' + b.id).textContent = EconomyManager.format(cost) + ' 💰';
+      const canAfford = GameManager.state.gold >= cost && unlocked;
+      buyBtn.classList.toggle('cant', !canAfford);
+      buyBtn.style.pointerEvents = unlocked ? 'auto' : 'none';
+    }
+
+    const resIcon = { gold:'💰', wood:'🪵', stone:'🪨' };
+
+    for(const u of GameManager.state.upgrades){
+      const btn = document.getElementById('ubuy-' + u.id);
+      const card = document.getElementById('ucard-' + u.id);
+      if(!btn) continue;
+      const stillLocked = u.requiresLifetimeGold && GameManager.state.stats.lifetimeGoldEarned < u.requiresLifetimeGold;
+      if(u.owned){
+        btn.textContent = '✔ Attivo';
+        btn.classList.add('cant');
+        card.classList.add('owned');
+        btn.style.pointerEvents = 'none';
+      } else if(stillLocked){
+        btn.textContent = 'Si sblocca a ' + EconomyManager.format(u.requiresLifetimeGold) + ' 💰 guadagnati';
+        btn.classList.add('cant');
+        card.classList.add('locked');
+        btn.style.pointerEvents = 'none';
+      } else {
+        card.classList.remove('locked');
+        const res = u.costResource || 'gold';
+        btn.textContent = EconomyManager.format(u.cost) + ' ' + resIcon[res];
+        const canAfford = GameManager.getResource(res) >= u.cost;
+        btn.classList.toggle('cant', !canAfford);
+        btn.style.pointerEvents = 'auto';
+      }
+    }
+
+    // ----- Infinite upgrades -----
+    for(const u of GameManager.state.infiniteUpgrades){
+      const cost = GameManager.infiniteUpgradeCost(u);
+      const res = u.costResource || 'gold';
+      const lvlEl = document.getElementById('inflvl-' + u.id);
+      const statsEl = document.getElementById('infstats-' + u.id);
+      const buyBtn = document.getElementById('infbuy-' + u.id);
+      const costEl = document.getElementById('infcost-' + u.id);
+      if(!buyBtn) continue;
+      if(lvlEl) lvlEl.textContent = 'Lv.' + u.level;
+      if(statsEl) statsEl.textContent = `Bonus attuale: +${Math.round(u.level * u.increment * 100)}%`;
+      if(costEl) costEl.textContent = EconomyManager.format(cost) + ' ' + resIcon[res];
+      buyBtn.classList.toggle('cant', GameManager.getResource(res) < cost);
+    }
+
+    // ----- Prestige summary -----
+    const crowns = GameManager.state.prestige.crowns;
+    const potential = PrestigeManager.potentialCrowns();
+    const canPrestige = PrestigeManager.canPrestige();
+    document.getElementById('prestigeSummary').innerHTML = `
+      <div class="crowns">👑 ${crowns}</div>
+      <div style="font-size:14px;color:#C9B896">Corone possedute (+${(Math.sqrt(crowns)*2).toFixed(1)}% produzione permanente)</div>
+      <div class="gain">Rinascita ora: +${potential} 👑</div>
+      <div style="font-size:13px;color:#C9B896">Serve almeno ${EconomyManager.format(PrestigeManager.MIN_LIFETIME_TO_PRESTIGE)} oro guadagnato in questa run</div>
+      <button class="prestige-btn ${canPrestige ? '' : 'cant'}" onclick="${canPrestige ? 'PrestigeManager.doPrestige()' : ''}">
+        ${canPrestige ? 'RINASCI ORA' : 'Non ancora pronto'}
+      </button>
+    `;
+
+    for(const p of GameManager.state.prestigeShop){
+      const card = document.getElementById('pcard-' + p.id);
+      const btn = document.getElementById('pbuy-' + p.id);
+      if(!btn) continue;
+      if(p.owned){
+        btn.textContent = '✔ Attivo';
+        btn.classList.add('cant');
+        card.classList.add('owned');
+        btn.style.pointerEvents = 'none';
+      } else {
+        btn.textContent = p.cost + ' 👑';
+        btn.classList.toggle('cant', GameManager.state.prestige.crowns < p.cost);
+        btn.style.pointerEvents = 'auto';
+      }
+    }
+
+    for(const u of GameManager.state.infinitePrestigeUpgrades){
+      const cost = GameManager.infiniteUpgradeCost(u);
+      const lvlEl = document.getElementById('pinflvl-' + u.id);
+      const statsEl = document.getElementById('pinfstats-' + u.id);
+      const buyBtn = document.getElementById('pinfbuy-' + u.id);
+      const costEl = document.getElementById('pinfcost-' + u.id);
+      if(!buyBtn) continue;
+      if(lvlEl) lvlEl.textContent = 'Lv.' + u.level;
+      if(statsEl){
+        const totalBonus = u.effect === 'offline_flat'
+          ? `+${(u.level * u.increment).toFixed(1)}h totali`
+          : `+${Math.round(u.level * u.increment * 100)}% totale`;
+        statsEl.textContent = `Bonus attuale: ${totalBonus}`;
+      }
+      if(costEl) costEl.textContent = cost + ' 👑';
+      buyBtn.classList.toggle('cant', GameManager.state.prestige.crowns < cost);
+    }
+
+    // ----- Quests -----
+    for(const q of QuestManager.list){
+      const card = document.getElementById('qcard-' + q.id);
+      const btn = document.getElementById('qclaim-' + q.id);
+      if(!btn) continue;
+      const claimed = GameManager.state.quests.claimedIds.includes(q.id);
+      const done = q.check();
+      card.classList.toggle('done', done && !claimed);
+      card.classList.toggle('claimed', claimed);
+      if(claimed){
+        btn.textContent = '✔';
+        btn.classList.add('cant');
+        btn.style.pointerEvents = 'none';
+      } else if(done){
+        btn.textContent = 'Riscuoti';
+        btn.classList.remove('cant');
+        btn.style.pointerEvents = 'auto';
+      } else {
+        btn.textContent = '…';
+        btn.classList.add('cant');
+        btn.style.pointerEvents = 'none';
+      }
+    }
+
+    // ----- Achievements -----
+    let unlockedCount = 0;
+    for(const a of AchievementManager.list){
+      const cell = document.getElementById('ach-' + a.id);
+      if(!cell) continue;
+      const isUnlocked = GameManager.state.achievements.unlockedIds.includes(a.id);
+      if(isUnlocked) unlockedCount++;
+      cell.classList.toggle('unlocked', isUnlocked);
+      if(isUnlocked){
+        cell.classList.remove('locked-hidden');
+        cell.innerHTML = `${a.icon}<div class="ach-label">${a.name}</div>`;
+      } else if(a.hidden){
+        cell.classList.add('locked-hidden');
+        cell.innerHTML = `❓<div class="ach-label">???</div>`;
+      } else {
+        cell.classList.remove('locked-hidden');
+        cell.innerHTML = `🔒<div class="ach-label">${a.name}</div>`;
+      }
+    }
+    const achProgress = document.getElementById('achProgress');
+    if(achProgress) achProgress.textContent = `Sbloccati: ${unlockedCount} / ${AchievementManager.list.length}`;
+
+    this.renderAdsBox();
+    this.updateSettingsUI();
+  },
+
+  renderAdsBox(){
+    const box = document.getElementById('adsBox');
+    if(!box) return;
+    const remaining = AdManager.remainingToday();
+    const cooldown = AdManager.cooldownSecondsLeft();
+    const disabled = remaining <= 0 || cooldown > 0;
+    const statusText = cooldown > 0 ? `prossimo tra ${cooldown}s` : `${remaining}/${AdManager.MAX_PER_DAY} oggi`;
+    box.innerHTML = `
+      <div style="font-size:15px;color:#C9B896;margin-bottom:8px;">📺 Bonus video — ${statusText}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="ads-btn" ${disabled ? 'disabled' : ''} onclick="AdManager.boostProduction()">×2 produzione 10m</button>
+        <button class="ads-btn" ${disabled ? 'disabled' : ''} onclick="AdManager.randomReward()">Ricompensa casuale</button>
+      </div>
+    `;
+  },
+
+  updateSettingsUI(){
+    const s = GameManager.state.settings;
+    const m = document.getElementById('musicStatus'); if(m) m.textContent = s.musicOn ? 'Attiva — tocca per disattivare' : 'Disattivata — tocca per attivare';
+    const e = document.getElementById('sfxStatus'); if(e) e.textContent = s.sfxOn ? 'Attivi — tocca per disattivare' : 'Disattivati — tocca per attivare';
+    const v = document.getElementById('vibStatus'); if(v) v.textContent = s.vibrationOn ? 'Attiva — tocca per disattivare' : 'Disattivata — tocca per attivare';
+    const n = document.getElementById('notifStatus'); if(n) n.textContent = s.notificationsOn ? 'Attive — tocca per disattivare' : 'Disattivate — tocca per attivare';
+    const q = document.getElementById('qualityStatus'); if(q) q.textContent = s.quality === 'high' ? 'Alta — tocca per ridurre' : 'Bassa — tocca per aumentare';
+    const b = document.getElementById('batteryStatus'); if(b) b.textContent = s.batterySaver ? 'Attivo — tocca per disattivare' : 'Disattivato — tocca per attivare';
+    LocalizationManager.apply();
+  },
+
+  showFloatText(x, y, text){
+    const el = document.createElement('div');
+    el.className = 'floatText';
+    el.textContent = text;
+    el.style.left = (x - 20) + 'px';
+    el.style.top = y + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  },
+
+  pulseTapButton(){
+    const btn = document.getElementById('tapButton');
+    btn.style.transform = 'scale(0.94)';
+    setTimeout(() => { btn.style.transform = ''; }, 90);
+  },
+
+  showToast(text){
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = text;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  },
+
+  showModal(title, html){
+    document.getElementById('modalBox').innerHTML = `<h2>${title}</h2>${html}<button class="modal-btn" onclick="UIManager.closeModal()">OK</button>`;
+    document.getElementById('modalOverlay').classList.add('show');
+  },
+
+  closeModal(){
+    document.getElementById('modalOverlay').classList.remove('show');
+  },
+
+  showTutorial(){
+    const steps = [
+      { title:'👋 BENVENUTO', body:'Tocca la piantina per raccogliere oro. Ogni tocco ti dà risorse subito.' },
+      { title:'🏗️ COSTRUISCI', body:'Vai su "Edifici" e compra la tua prima Miniera: produrrà oro da sola, anche a schermo spento.' },
+      { title:'⬆️ POTENZIA', body:'Su "Upgrade" puoi rendere i tocchi e gli edifici più potenti.' },
+      { title:'⏳ TORNA DOPO', body:'Chiudi pure il gioco: quando torni, riceverai l\'oro prodotto mentre eri via!' }
+    ];
+    let i = 0;
+    const showStep = () => {
+      const s = steps[i];
+      const isLast = i === steps.length - 1;
+      document.getElementById('modalBox').innerHTML = `<h2>${s.title}</h2><p style="font-size:19px">${s.body}</p>
+        <button class="modal-btn" onclick="UIManager.nextTutorialStep()">${isLast ? 'Inizia a giocare!' : 'Avanti'}</button>`;
+      document.getElementById('modalOverlay').classList.add('show');
+    };
+    this._tutorialSteps = steps;
+    this._tutorialIndex = 0;
+    window.__tutStep = 0;
+    this._showTutorialStep = showStep;
+    showStep();
+  },
+
+  nextTutorialStep(){
+    this._tutorialIndex++;
+    if(this._tutorialIndex >= this._tutorialSteps.length){
+      this.closeModal();
+      GameManager.state.firstRun = false;
+      SaveManager.save();
+      return;
+    }
+    const s = this._tutorialSteps[this._tutorialIndex];
+    const isLast = this._tutorialIndex === this._tutorialSteps.length - 1;
+    document.getElementById('modalBox').innerHTML = `<h2>${s.title}</h2><p style="font-size:19px">${s.body}</p>
+      <button class="modal-btn" onclick="UIManager.nextTutorialStep()">${isLast ? 'Inizia a giocare!' : 'Avanti'}</button>`;
+  }
+};
+
+/* =========================================================================
+   BOOTSTRAP
+   ========================================================================= */
+(function boot(){
+  const hadSave = SaveManager.load();
+  UIManager.init();
+  GraphicsManager.applyOnBoot();
+  LocalizationManager.apply();
+  UIManager.updateSettingsUI();
+
+  if(hadSave){
+    OfflineManager.applyAndShow();
+  }
+  if(GameManager._showMigrationNotice){
+    setTimeout(() => {
+      UIManager.showModal('👑 IL REGNO SI RINNOVA', `
+        <p style="font-size:16px">Il tuo regno ha adottato un nuovo sistema economico: ora produce anche Legno e Pietra, non solo Oro.</p>
+        <p style="font-size:16px">Alcuni edifici sono stati rinominati (Casa, Fattoria, Cava) e ripartono da zero — Miniera e Segheria mantengono invece i livelli raggiunti.</p>
+        <p style="font-size:14px;color:#C9B896">I tuoi progressi generali (Corone, achievement, missioni) restano tutti intatti.</p>
+      `);
+      GameManager.state.migrationNoticeShown = true;
+      SaveManager.save();
+    }, hadSave ? 1200 : 200);
+  } else if(GameManager.state.firstRun){
+    setTimeout(() => UIManager.showTutorial(), hadSave ? 600 : 200);
+  }
+
+  // main game loop: intervallo variabile (200ms normale, 1000ms in risparmio batteria)
+  let lastTick = Date.now();
+  function loop(){
+    const now = Date.now();
+    const delta = (now - lastTick) / 1000;
+    lastTick = now;
+    GameManager.tick(delta);
+    UIManager.refreshAll();
+    setTimeout(loop, GameManager.state.settings.batterySaver ? 1000 : 200);
+  }
+  setTimeout(loop, 200);
+
+  // autosave every 30s
+  setInterval(() => SaveManager.save(), 30000);
+
+  // avvia il ciclo di eventi casuali
+  EventManager.scheduleNext();
+
+  // l'audio richiede un gesto dell'utente per partire (regola dei browser)
+  const startAudioOnce = () => {
+    AudioManager.ensureCtx();
+    if(GameManager.state.settings.musicOn) AudioManager.startMusic();
+    document.removeEventListener('pointerdown', startAudioOnce);
+  };
+  document.addEventListener('pointerdown', startAudioOnce);
+
+  // save on tab hide / close + promemoria notifiche in background
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){
+      SaveManager.save();
+      NotificationManager.scheduleBackgroundPing();
+    } else {
+      NotificationManager.cancelBackgroundPing();
+    }
+  });
+  window.addEventListener('beforeunload', () => SaveManager.save());
+
+  // registra il service worker per il funzionamento offline (attivo solo se il gioco
+  // è ospitato su un vero server/https — se aperto come file locale viene ignorato)
+  if('serviceWorker' in navigator && location.protocol !== 'file:'){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
